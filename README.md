@@ -32,3 +32,7 @@ exetera import
 
 ### Run the postprocessing script on the imported dataset
 This can be found in notebooks/standard_processing.ipynb
+
+
+### Government Open Licence v3.0 attribution statement
+The resources folder contains, amongst other resources, CSV files containing lsoa11cd geo-data that are required for certain scripts and are derived from data sources made available by [https://data.gov.uk](https://data.gov.uk). These sources are used in accordance with the [Open Government Licence V3.0](http://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/)
