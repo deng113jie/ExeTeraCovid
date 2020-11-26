@@ -68,8 +68,6 @@ def counts_from_full_entries(starts, ends, text, words_to_check):
                 break
     print(total_count)
 
-print(exetera.__version__)
-
 
 with h5py.File('/home/ben/covid/ds_20200901_full.hdf5', 'r') as hf:
     with h5py.File('/home/ben/covid/ds_20200901_othersymp.hdf5', 'w') as tmp:
