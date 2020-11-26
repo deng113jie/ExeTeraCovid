@@ -6,7 +6,7 @@ import pandas as pd
 
 from exetera.core import utils
 from exetera.core.session import Session
-from exetera.processing.healthy_diet_index import healthy_diet_index
+from exeteracovid.algorithms.healthy_diet_index import healthy_diet_index
 from exetera.core import fields
 
 

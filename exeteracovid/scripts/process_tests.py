@@ -14,9 +14,9 @@ import numpy as np
 
 from exetera.core import dataset, utils
 
-from exetera.processing.analytics import group_new_test_indices_by_patient, get_patients_with_old_format_tests, \
-    filter_duplicate_new_tests
-from exetera.processing.convert_old_assessments import ConvertOldAssessmentsV1
+from exeteracovid.algorithms.convert_assessment_tests import\
+    group_new_test_indices_by_patient, get_patients_with_old_format_tests, filter_duplicate_new_tests
+from exeteracovid.algorithms.convert_old_assessments import ConvertOldAssessmentsV1
 
 strformat = '%Y-%m-%d'
 t_file_name = '/home/ben/covid/covid_test_export_20200601030001.csv'

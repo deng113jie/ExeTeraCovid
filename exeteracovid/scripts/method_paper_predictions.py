@@ -7,7 +7,7 @@ import pandas as pd
 
 from exetera.core import exporter, persistence, utils
 from exetera.core.persistence import DataStore
-from exetera.processing.nat_medicine_model import nature_medicine_model_1
+from exeteracovid.algorithms.nat_medicine_model import nature_medicine_model_1
 
 
 def method_paper_prediction_pipeline(ds, src_data, dest_data, first_timestamp, last_timestamp):

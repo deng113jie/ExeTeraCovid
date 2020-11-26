@@ -2,7 +2,7 @@
 from collections import defaultdict
 
 from exetera.core import dataset
-from exetera.processing import analytics
+from exeteracovid.algorithms import convert_assessment_tests
 
 
 class FilterNewAssessmentsV1:
@@ -10,7 +10,7 @@ class FilterNewAssessmentsV1:
     def __init__(self, test_ds, patients):
         if not isinstance(test_ds, dataset.Dataset):
             raise ValueError("'test_ds' must be of type Dataset")
-        if not isinstance(patients, type(defaultdict(analytics.TestIndex))):
+        if not isinstance(patients, type(defaultdict(convert_assessment_tests.TestIndex))):
             raise ValueError("'patients' must be of type 'defaultdict(TestIndex)'")
         self.test_ds = test_ds
         self.patients = patients
@@ -23,7 +23,7 @@ class FilterNewAssessmentsV1:
         edate_los = self.test_ds.field_by_name('date_taken_between_start')
         edate_his = self.test_ds.field_by_name('date_taken_between_end')
 
-        cleaned_patients = defaultdict(analytics.TestIndices)
+        cleaned_patients = defaultdict(convert_assessment_tests.TestIndices)
         for p in self.patients.items():
             # print(p[0], len(p[1].indices))
             test_dates = set()

@@ -9,9 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from exetera.processing.covid_test import ValidateCovidTestResultsFacVersion1, ValidateCovidTestResultsFacVersion2
-from exetera.processing.temperature import ValidateTemperature1
-from exetera.processing.weight_height_bmi import ValidateHeight1, ValidateHeight2
+from exeteracovid.algorithms.covid_test import ValidateCovidTestResultsFacVersion1, ValidateCovidTestResultsFacVersion2
+from exeteracovid.algorithms.temperature import ValidateTemperature1
+from exeteracovid.algorithms.weight_height_bmi import ValidateHeight1, ValidateHeight2
 
 
 class ParsingSchemaVersionError(Exception):

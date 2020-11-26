@@ -12,8 +12,8 @@ import pandas as pd
 from exetera.core import exporter, persistence, utils
 from exetera.core.persistence import DataStore
 from exetera.core.session import Session
-from exetera.processing.nat_medicine_model import nature_medicine_model_1
-from exetera.processing.effective_test_date import effective_test_date
+from exeteracovid.algorithms.nat_medicine_model import nature_medicine_model_1
+from exeteracovid.algorithms.effective_test_date import effective_test_date
 
 
 # patient fields to export

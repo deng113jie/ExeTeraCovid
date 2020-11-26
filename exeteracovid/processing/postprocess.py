@@ -16,11 +16,11 @@ from collections import defaultdict
 import numpy as np
 import numba
 
-from exetera.processing.age_from_year_of_birth import calculate_age_from_year_of_birth_fast
-from exetera.processing.weight_height_bmi import weight_height_bmi_fast_1
-from exetera.processing.inconsistent_symptoms import check_inconsistent_symptoms_1
-from exetera.processing.temperature import validate_temperature_1
-from exetera.processing.combined_healthcare_worker import combined_hcw_with_contact
+from exeteracovid.algorithms.age_from_year_of_birth import calculate_age_from_year_of_birth_fast
+from exeteracovid.algorithms.weight_height_bmi import weight_height_bmi_fast_1
+from exeteracovid.algorithms.inconsistent_symptoms import check_inconsistent_symptoms_1
+from exeteracovid.algorithms.temperature import validate_temperature_1
+from exeteracovid.algorithms.combined_healthcare_worker import combined_hcw_with_contact
 from exetera.core import persistence
 from exetera.core.persistence import DataStore
 from exetera.core.session import Session
