@@ -12,6 +12,6 @@ setup(
     license='http://www.apache.org/licenses/LICENSE-2.0',
     packages=['exeteracovid', 'exeteracovid.algorithms', 'exeteracovid.processing'],
     install_requires=[
-        'exetera>=0.3,<0.4'
+        'exetera>=0.4'
     ]
 )
