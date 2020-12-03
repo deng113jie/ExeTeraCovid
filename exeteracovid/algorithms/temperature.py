@@ -9,7 +9,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import warnings
+
 import numpy as np
+
+from exetera.core import validation as val
 
 
 class ValidateTemperature1:
@@ -43,6 +47,7 @@ class ValidateTemperature1:
 def validate_temperature_1(min_temp, max_temp,
                            temps, temp_units, temp_set,
                            dest_temps, dest_temps_valid, dest_temps_modified):
+    warnings.warn("deprecated", DeprecationWarning)
     raw_temps = temps[:]
     raw_dest_temps = np.where(raw_temps > max_temp, (raw_temps - 32) / 1.8, raw_temps)
     raw_dest_temps_valid = temp_set[:] & (min_temp <= raw_dest_temps) & (raw_dest_temps <= max_temp)
@@ -50,3 +55,16 @@ def validate_temperature_1(min_temp, max_temp,
     dest_temps.write(raw_dest_temps)
     dest_temps_valid.write(raw_dest_temps_valid)
     dest_temps_modified.write(raw_dest_temps_modified)
+
+
+def validate_temperature_v1(session, min_temp, max_temp,
+                           temps, temp_units, temp_set,
+                           dest_temps, dest_temps_valid, dest_temps_modified):
+    raw_temps = val.raw_array_from_parameter(session, "temps", temps)
+    raw_temp_set = val.raw_array_from_parameter(session, "temp_set", temp_set)
+    raw_dest_temps = np.where(raw_temps > max_temp, (raw_temps - 32) / 1.8, raw_temps)
+    raw_dest_temps_valid = raw_temp_set & (min_temp <= raw_dest_temps) & (raw_dest_temps <= max_temp)
+    raw_dest_temps_modified = raw_temps != raw_dest_temps
+    dest_temps.data.write(raw_dest_temps)
+    dest_temps_valid.data.write(raw_dest_temps_valid)
+    dest_temps_modified.data.write(raw_dest_temps_modified)

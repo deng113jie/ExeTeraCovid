@@ -64,6 +64,7 @@ def get_antibody_and_related_pcr_test(s, test_pids, test_atb, test_pcr, test_ts,
     _check_equal_length('test_pids', test_pids, 'test_res', test_res)
 
     test_pcr_res = np.zeros_like(test_res)
+    test_pcr_dat = np.zeros_like(test_res, dtype=np.float64)
     t_spans=s.get_spans(test_pids)   # all tests for one pid grouped together
     for i in range(len(t_spans) - 1):
         sps, spe = t_spans[i], t_spans[i + 1]
@@ -76,6 +77,7 @@ def get_antibody_and_related_pcr_test(s, test_pids, test_atb, test_pcr, test_ts,
             if test_atb[j_idx]:
                 j_ts = test_ts[j_idx]
                 pcr_res = 0
+                pcr_dat = 0
                 for k in range(j+1, len(test_order)):
                     # going through all the tests and finding AB+/- and finding all the pcr tests X days back
                     k_idx = sps + test_order[k]
@@ -83,18 +85,29 @@ def get_antibody_and_related_pcr_test(s, test_pids, test_atb, test_pcr, test_ts,
                         k_ts = test_ts[k_idx]
                         if j_ts - k_ts > 86400*window:
                             break
-                        pcr_res = max(pcr_res, test_res[k_idx])   # storing the positive result for pcr
+                        if test_res[k_idx] > pcr_res:
+                            pcr_res = test_res[k_idx]   # storing the positive result for pcr
+                            pcr_dat = test_ts[k_idx]
                 test_pcr_res[j_idx] = pcr_res
-    return test_pcr_res
+                test_pcr_dat[j_idx] = pcr_dat
+    return test_pcr_res, test_pcr_dat
 
 
-def find_earliest_match(s, test_ts, asmt_ts, symptom, symptom_threshold, window, test_symptom_delta):
+def find_earliest_match(s, test_ts, test_pcr_ts, asmt_ts, symptom, symptom_threshold, window, test_symptom_delta):
+    """
+    Get deltas between the start of symptoms and test dates. If the patient has no pcr test, the antibody test date is
+    used. If the patient has a pcr_test within the window of interest, use the pcr test timestamp rather than the
+    antibody test timestamp.
+    """
     _check_equal_length('test_ts', test_ts, 'tests_symptom_delta', test_symptom_delta)
     _check_equal_length('asmt_ts', asmt_ts, 'symptom', symptom)
 
     def _inner(test_start, test_end, asmt_start, asmt_end):
         for t in range(test_start, test_end):
             cur_test_ts = test_ts[t]
+            assert(test_ts[t] >= test_pcr_ts[t])
+            if test_pcr_ts[t] != 0:
+                cur_test_ts = test_pcr_ts[t]
 
             symptom_to_test_delta = 0
             for a in range(asmt_start, asmt_end):
@@ -218,12 +231,13 @@ def filter_and_generate_consolidated_mappings(s, src, dest, start_ts, end_ts,
                             s.get(s_tests['date_taken_between_start']).data[:],
                             s.get(s_tests['date_taken_between_end']).data[:])
 
-    t_pcr_res = get_antibody_and_related_pcr_test(s, t_pids, t_atb_filter, t_pcr_filter, t_tats, t_rslts, window)
+    t_pcr_res, t_pcr_tats = get_antibody_and_related_pcr_test(s, t_pids, t_atb_filter, t_pcr_filter, t_tats, t_rslts, window)
 
     t_pids = s.apply_filter(t_test_filter, t_pids)
     t_tats = s.apply_filter(t_test_filter, t_tats)
     t_rslts = s.apply_filter(t_test_filter, t_rslts)
     t_pcr_res = s.apply_filter(t_test_filter, t_pcr_res)
+    t_pcr_tats = s.apply_filter(t_test_filter, t_pcr_tats)
 
     t_pos = t_rslts == 4
 
@@ -268,7 +282,7 @@ def filter_and_generate_consolidated_mappings(s, src, dest, start_ts, end_ts,
         with Timer("getting symptom deltas for {}".format(k)):
             symptom_threshold = custom_symptom_thresholds.get(k, 2)
             t_symptom_deltas = np.zeros(len(t_pids), dtype=np.float32)
-            op = find_earliest_match(s, t_tats, a_cats,
+            op = find_earliest_match(s, t_tats, t_pcr_tats, a_cats,
                                      s.apply_filter(assessment_filter, src_symptom_f.data[:]),
                                      symptom_threshold, window, t_symptom_deltas)
             iterate_over_matching_subsets(s, t_pids, a_pids, op)
@@ -282,6 +296,10 @@ def filter_and_generate_consolidated_mappings(s, src, dest, start_ts, end_ts,
     dst_rslt_f.data.write(t_rslts)
     dst_pcr_rslt_f = s.get(s_tests['result']).create_like(d_tests, 'pcr_result')
     dst_pcr_rslt_f.data.write(t_pcr_res)
+    dst_tat_f = s.get(s_tests['date_taken_specific']).create_like(d_tests, 'atb_tested_at')
+    dst_tat_f.data.write(t_tats)
+    dst_pcr_tat_f = s.get(s_tests['date_taken_specific']).create_like(d_tests, 'pcr_tested_at')
+    dst_pcr_tat_f.data.write(t_pcr_tats)
 
 
 def merge_consolidated_fields(s, src, dest, src_ptnt_keys):

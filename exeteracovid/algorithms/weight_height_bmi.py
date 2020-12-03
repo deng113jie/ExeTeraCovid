@@ -9,9 +9,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import numpy as np
+import warnings
 
-from exetera.core import persistence, utils
+import numpy as np
 
 
 class ValidateHeight1:
@@ -88,54 +88,54 @@ class ValidateHeight1:
         return self.weight_kg_clean, self.height_cm_clean, self.bmi_clean
 
 
-def weight_height_bmi_1(min_weight, max_weight, min_height, max_height, min_bmi, max_bmi,
-                        genders, ages,
-                        weights, heights, bmis,
-                        weights_clean, weights_filter, weights_modified_flag,
-                        heights_clean, heights_filter, heights_modified_flag,
-                        bmis_clean, bmis_filter, bmis_modified_flag):
-
-    if len(weights) != len(heights):
-        raise ValueError("'weights' and 'heights' are different lengths")
-    if len(weights) != len(bmis):
-        raise ValueError("'weights' and 'bmis' are different lengths")
-
-    weight_in_range = utils.valid_range_fac_inc(min_weight, max_weight)
-    height_in_range = utils.valid_range_fac_inc(min_height, max_height)
-    bmi_in_range = utils.valid_range_fac_inc(min_bmi, max_bmi)
-    for ir in range(len(weights)):
-        if ir % 1000000 == 0:
-            print(ir)
-
-        weight = weights[ir]
-        if weight is None:
-            weights_clean.append(None)
-            weights_filter.append(0)
-        else:
-            weights_clean.append(weight)
-            weights_filter.append(weight_in_range(weight))
-
-        height = heights[ir]
-        if height is None:
-            heights_clean.append(None)
-            heights_filter.append(0)
-        else:
-            heights_clean.append(height)
-            heights_filter.append(height_in_range(height))
-
-        bmi = bmis[ir]
-        if bmi is None:
-            bmis_clean.append(None)
-            bmis_filter.append(0)
-        else:
-            bmis_clean.append(bmi)
-            bmis_filter.append(bmi_in_range(bmi))
-    weights_clean.flush()
-    weights_filter.flush()
-    heights_clean.flush()
-    heights_filter.flush()
-    bmis_clean.flush()
-    bmis_filter.flush()
+# def weight_height_bmi_1(min_weight, max_weight, min_height, max_height, min_bmi, max_bmi,
+#                         genders, ages,
+#                         weights, heights, bmis,
+#                         weights_clean, weights_filter, weights_modified_flag,
+#                         heights_clean, heights_filter, heights_modified_flag,
+#                         bmis_clean, bmis_filter, bmis_modified_flag):
+#
+#     if len(weights) != len(heights):
+#         raise ValueError("'weights' and 'heights' are different lengths")
+#     if len(weights) != len(bmis):
+#         raise ValueError("'weights' and 'bmis' are different lengths")
+#
+#     weight_in_range = utils.valid_range_fac_inc(min_weight, max_weight)
+#     height_in_range = utils.valid_range_fac_inc(min_height, max_height)
+#     bmi_in_range = utils.valid_range_fac_inc(min_bmi, max_bmi)
+#     for ir in range(len(weights)):
+#         if ir % 1000000 == 0:
+#             print(ir)
+#
+#         weight = weights[ir]
+#         if weight is None:
+#             weights_clean.append(None)
+#             weights_filter.append(0)
+#         else:
+#             weights_clean.append(weight)
+#             weights_filter.append(weight_in_range(weight))
+#
+#         height = heights[ir]
+#         if height is None:
+#             heights_clean.append(None)
+#             heights_filter.append(0)
+#         else:
+#             heights_clean.append(height)
+#             heights_filter.append(height_in_range(height))
+#
+#         bmi = bmis[ir]
+#         if bmi is None:
+#             bmis_clean.append(None)
+#             bmis_filter.append(0)
+#         else:
+#             bmis_clean.append(bmi)
+#             bmis_filter.append(bmi_in_range(bmi))
+#     weights_clean.flush()
+#     weights_filter.flush()
+#     heights_clean.flush()
+#     heights_filter.flush()
+#     bmis_clean.flush()
+#     bmis_filter.flush()
 
 def weight_height_bmi_fast_1(
     datastore,
@@ -145,6 +145,8 @@ def weight_height_bmi_fast_1(
     weights_clean, weights_filter, weights_modified_flag,
     heights_clean, heights_filter, heights_modified_flag,
     bmis_clean, bmis_filter, bmis_modified_flag):
+
+    warnings.warn("deprecated", DeprecationWarning)
 
     raw_weightsv = datastore.get_reader(weights)[:]
     raw_weightsf = datastore.get_reader(weight_filter)[:]
@@ -195,6 +197,52 @@ def weight_height_bmi_fast_1(
     bmis_filter.flush()
     if bmis_modified_flag is not None:
         bmis_modified_flag.flush()
+
+def weight_height_bmi_v1(
+    session,
+    min_weight, max_weight, min_height, max_height, min_bmi, max_bmi,
+    genders, gender_filter, ages, age_filter,
+    weights, weight_filter, heights, height_filter, bmis, bmi_filter,
+    weights_clean, weights_filter, weights_modified_flag,
+    heights_clean, heights_filter, heights_modified_flag,
+    bmis_clean, bmis_filter, bmis_modified_flag):
+
+    raw_weightsv = session.get(weights).data[:]
+    raw_weightsf = session.get(weight_filter).data[:]
+    raw_heightsv = session.get(heights).data[:]
+    raw_heightsf = session.get(height_filter).data[:]
+    raw_bmisv = session.get(bmis).data[:]
+    raw_bmisf = session.get(bmi_filter).data[:]
+
+    length = len(raw_weightsv)
+    def test_input(series, name):
+        if len(series) != length:
+            raise ValueError(
+                f"weights (length {length}) and {name} (length {len(series)} must be the same")
+
+    test_input(raw_weightsf, 'weight_filter')
+    test_input(raw_heightsv, 'heights')
+    test_input(raw_heightsf, 'height_filter')
+    test_input(raw_bmisv, 'bmis')
+    test_input(raw_bmisf, 'bmi_filter')
+
+    weights_clean.data.write(raw_weightsv)
+    weights_filter.data.write(
+        raw_weightsf & (min_weight <= raw_weightsv) & (raw_weightsv <= max_weight))
+    if weights_modified_flag is not None:
+        weights_modified_flag.data.write(np.zeros(length, dtype=np.bool))
+
+    heights_clean.data.write(raw_heightsv)
+    heights_filter.data.write(
+        raw_heightsf & (min_height <= raw_heightsv) & (raw_heightsv <= max_height))
+    if heights_modified_flag is not None:
+        heights_modified_flag.data.write(np.zeros(length, dtype=np.bool))
+
+    bmis_clean.data.write(raw_bmisv)
+    bmis_filter.data.write(
+        raw_bmisf & (min_bmi <= raw_bmisv) & (raw_bmisv <= max_bmi))
+    if bmis_modified_flag is not None:
+        bmis_modified_flag.data.write(np.zeros(length, dtype=np.bool))
 
 
 class ValidateHeight2:
