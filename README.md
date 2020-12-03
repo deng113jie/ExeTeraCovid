@@ -2,6 +2,8 @@
 
 Welcome to the ExeTeraCovid Readme!
 
+Current Release v0.2.0
+
 This page and the accompanying wiki show you how to use [ExeTera](https://github.com/KCL-BMEIS/ExeTera.git) to create reproducible analysis pipelines for the Covid Symptom Study dataset.
 
 This project contains a set of notebooks, scripts and algorithms to help you analyse and write new analyses for the Covid Symptom Study data.
@@ -47,7 +49,7 @@ Fill in the fields for `input_filename` and `output_filename`, and then run the 
 ### Via python script
 
 ```
-exeteracovid standard_processing -i path/to/input_dataset -o path/to/output_dataset -d
+standard_processing -i path/to/input_dataset -o path/to/output_dataset -d
 ```
 #### Arguments
  * `-i/--input`: The path and name of the import hdf5 file
