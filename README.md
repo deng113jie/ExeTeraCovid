@@ -47,7 +47,7 @@ Fill in the fields for `input_filename` and `output_filename`, and then run the 
 ### Via python script
 
 ```
-exeteracovid standard_processing -i path/to/input_dataset -o path/to/output_dataset -d
+standard_processing -i path/to/input_dataset -o path/to/output_dataset -d
 ```
 #### Arguments
  * `-i/--input`: The path and name of the import hdf5 file
