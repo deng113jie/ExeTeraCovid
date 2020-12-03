@@ -2,7 +2,7 @@
 
 Welcome to the ExeTeraCovid Readme!
 
-Current Release v0.2.0
+Current Release v0.2.0.1
 
 This page and the accompanying wiki show you how to use [ExeTera](https://github.com/KCL-BMEIS/ExeTera.git) to create reproducible analysis pipelines for the Covid Symptom Study dataset.
 
