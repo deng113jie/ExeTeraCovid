@@ -2,7 +2,13 @@
 
 Welcome to the ExeTeraCovid Readme!
 
-Current Release v0.2.0.1
+<p>
+   <a href="https://pypi.org/project/torchio/">
+     <img src="https://img.shields.io/pypi/v/exetera?label=PyPI%20version&logo=python&logoColor=white" alt="PyPI version">
+   </a>
+   <img src = "https://github.com/KCL-BMEIS/ExeTeraCovid/workflows/Unittests/badge.svg">
+</p>
+Requires python 3.7+
 
 This page and the accompanying wiki show you how to use [ExeTera](https://github.com/KCL-BMEIS/ExeTera.git) to create reproducible analysis pipelines for the Covid Symptom Study dataset.
 
