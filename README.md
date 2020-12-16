@@ -4,7 +4,7 @@ Welcome to the ExeTeraCovid Readme!
 
 <p>
    <a href="https://pypi.org/project/torchio/">
-     <img src="https://img.shields.io/pypi/v/exetera?label=PyPI%20version&logo=python&logoColor=white" alt="PyPI version">
+     <img src="https://img.shields.io/pypi/v/exeteracovid?label=PyPI%20version&logo=python&logoColor=white" alt="PyPI version">
    </a>
    <img src = "https://github.com/KCL-BMEIS/ExeTeraCovid/workflows/Unittests/badge.svg">
 </p>
