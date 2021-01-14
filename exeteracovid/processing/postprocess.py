@@ -30,7 +30,7 @@ from exetera.core import persistence
 # from exetera.core.persistence import DataStore
 from exetera.core.session import Session
 from exetera.core import readerwriter as rw
-from exetera.core import utils
+from exetera.core import fields, utils
 
 # TODO: replace datastore with session and readers/writers with fields
 
@@ -466,24 +466,6 @@ def log(*a, **kwa):
 # # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # # See the License for the specific language governing permissions and
 # # limitations under the License.
-#
-# from datetime import datetime
-# import time
-# from collections import defaultdict
-#
-# import numpy as np
-# import numba
-
-
-# TODO: replace datastore with session and readers/writers with fields
-
-# TODO: postprocessing activities
-# * assessment sort by (patient_id, created_at)
-# * aggregate from assessments to patients
-#   * was first unwell
-
-def log(*a, **kwa):
-    print(*a, **kwa)
 
 
 def postprocess(dataset, destination, timestamp=None, flags=None):
@@ -695,14 +677,14 @@ def postprocess(dataset, destination, timestamp=None, flags=None):
             print("generate daily assessments")
             patient_ids = s.get(sorted_assessments_src['patient_id'])
             created_at_days = s.get(sorted_assessments_src['created_at_day'])
-            raw_created_at_days = created_at_days[:]
+            raw_created_at_days = created_at_days.data[:]
 
             if 'assessment_patient_id_fkey' in assessments_src.keys():
                 patient_id_index = assessments_src['assessment_patient_id_fkey']
             else:
                 patient_id_index = assessments_dest['assessment_patient_id_fkey']
             patient_id_indices = s.get(patient_id_index)
-            raw_patient_id_indices = patient_id_indices[:]
+            raw_patient_id_indices = patient_id_indices.data[:]
 
 
             print("Calculating patient id index spans")
@@ -741,7 +723,7 @@ def postprocess(dataset, destination, timestamp=None, flags=None):
                     else:
                         print(f"  Skipping field {k}")
                 else:
-                    if isinstance(reader, rw.CategoricalReader):
+                    if isinstance(reader, fields.CategoricalField):
                         s.apply_spans_max(
                             patient_id_index_spans, reader,
                             reader.create_like(daily_assessments_dest, k))
@@ -818,7 +800,7 @@ def postprocess(dataset, destination, timestamp=None, flags=None):
         print(f"completed in {time.time() - t0}s")
 
         spans = s.get_spans(
-            field=s.get_reader(daily_assessments_dest['daily_assessment_patient_id_fkey']))
+            field=s.get(daily_assessments_dest['daily_assessment_patient_id_fkey']))
 
         print('calculate daily assessment counts per patient')
         t0 = time.time()
