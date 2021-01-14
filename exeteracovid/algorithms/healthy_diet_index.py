@@ -9,6 +9,36 @@ def score_component(fields, maps, fn, length):
     return fn(accumulated)
 
 
+def gut_friendly_score(fields: dict):
+    weights = np.asarray([0, 0, 0.07, 0.14, 0.36, 0.71, 1.5, 3.5, 5])
+
+    red = {'ffq_chips', 'ffq_crisps_snacks', 'ffq_fast_food', 'ffq_ice_cream',
+           'ffq_red_processed_meat', 'ffq_sweets', 'ffq_white_bread'}
+
+    green = {'ffq_fruit', 'ffq_oily_fish', 'ffq_pulses', 'ffq_salad',
+             'ffq_vegetables', 'ffq_white_fish'}
+
+    red_score = None
+    green_score = None
+    for fk, fv in fields.items():
+        if fk in red:
+            results = weights[fv]
+            if red_score is None:
+                red_score = results
+            else:
+                red_score += results
+        elif fk in green:
+            results = weights[fv]
+            if green_score is None:
+                green_score = results
+            else:
+                green_score += results
+
+    green_score = np.where(green_score == 0, np.nan, green_score)
+
+    return red_score / green_score, red_score, green_score
+
+
 def healthy_diet_index(fields: dict):
     nda = lambda x: np.array(x, dtype=np.float32)
 
