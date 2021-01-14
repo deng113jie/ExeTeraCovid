@@ -2868,10 +2868,12 @@
           "field_type": "string"
         },
         "first_calories": {
-          "field_type": "datetime"
+          "field_type": "fixed_string",
+          "length": 10
         },
         "last_calories": {
-          "field_type": "datetime"
+          "field_type": "fixed_string",
+          "length": 10
         },
         "eats_breakfast": {
           "field_type": "categorical",
