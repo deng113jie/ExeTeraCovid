@@ -13,8 +13,7 @@ import unittest
 
 import numpy as np
 
-from exetera.core.utils import valid_range_fac_inc
-from exeteracovid.algorithms.age_from_year_of_birth import CalculateAgeFromYearOfBirth, calculate_age_from_year_of_birth_v1
+from exeteracovid.algorithms.age_from_year_of_birth import calculate_age_from_year_of_birth_v1
 
 
 class TestAgeFromYearOfBirth(unittest.TestCase):
