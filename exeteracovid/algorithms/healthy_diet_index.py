@@ -42,7 +42,6 @@ def gut_friendly_score(fields: dict):
 def healthy_diet_index(fields: dict):
     nda = lambda x: np.array(x, dtype=np.float32)
 
-    print(fields)
     fruit_maps = {
         'ffq_fruit': nda([0.0, 0.0, 4.0, 11.2, 28.8, 56.8, 120.0, 280.0, 480.0])
     }
