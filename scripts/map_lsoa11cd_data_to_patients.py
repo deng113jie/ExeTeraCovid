@@ -48,9 +48,9 @@ def incorporate_imd_data(s, src, lsoa, dest):
     d_ptnts = dest.create_group("patients")
     s.get(s_ptnts['id']).create_like(d_ptnts, 'id').data.write(p_ids)
     s.get(s_ptnts['lsoa11cd']).create_like(d_ptnts, 'lsoa11cd').data.write(p_lsoas)
+    s.create_numeric(d_ptnts, 'has_imd_data', 'bool').data.write(p_lsoa_filter)
     for k, v in result_dict.items():
         s.get(l_lsoa_table[k]).create_like(d_ptnts, k).data.write(v)
-    print(d_ptnts.keys())
 
 
 if __name__ == '__main__':
