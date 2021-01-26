@@ -1,15 +1,9 @@
-#!/usr/bin/env python
-
-import argparse
 import numpy as np
 import pandas as pd
-
-from exetera.core import fields, utils
-from exetera.core.session import Session
 from exeteracovid.algorithms.healthy_diet_index import healthy_diet_index
 
 
-def export_diet_dataset(s, src_data, geo_data, dest_data, csv_file):
+def export_diet_data_to_csv(s, src_data, geo_data, dest_data, csv_file):
 
     src_ptnts = src_data['patients']
     src_diet = src_data['diet']
@@ -122,20 +116,5 @@ def export_diet_dataset(s, src_data, geo_data, dest_data, csv_file):
         if k[-2:] == "_x" or k[-2:] == "_y":
             print(k)
 
-    print(tdf)
+    print(tdf.columns)
     tdf.to_csv(csv_file, index=False)
-
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-s', '--source', required=True, help='The dataset containing the patient and diet data')
-    parser.add_argument('-g', '--geodata', required=True, help='The dataset containing patient-level geocode data')
-    parser.add_argument('-o', '--output', required=True, help='The output dataset that contains the output data')
-    parser.add_argument('-c', '--csvoutput', required=True, help='The csv file that contains the output data')
-    args = parser.parse_args()
-    with Session() as s:
-        src = s.open_dataset(args.source, 'r', 'src')
-        geo = s.open_dataset(args.geodata, 'r', 'geo')
-        output = s.open_dataset(args.output, 'w', 'output')
-        export_diet_dataset(s, src, geo, output, args.csvoutput)
