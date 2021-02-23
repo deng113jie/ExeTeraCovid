@@ -40,3 +40,5 @@ class TestConcatenateDaily(unittest.TestCase):
 
             merge_daily_assessments_v1(s, src, dest)
             print(dest.keys())
+
+            print(s.get(dest['idf']).data[:])
