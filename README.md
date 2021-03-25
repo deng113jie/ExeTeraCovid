@@ -35,7 +35,7 @@ The Covid Symptom Study is delivered as a series of daily csv snapshots. If you 
 Importing the dataset requires the following:
  * The data snapshots
  * The schema file for the dataset `covid_schema.json` which can be found in this project
- * ExeTera, which can be installed using the command `pip install ExeTera`
+ * ExeTera and ExeTeraCovid, which can be installed using the command `pip install ExeTeraCovid`
 
 ```
 exetera import
