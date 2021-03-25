@@ -31,7 +31,9 @@ pip install -e .
 ```
 
 If you just want to make use of ExeTera and ExeTeraCovid in your own scripts / code, you should use pip to install them:
-```pip install exetera```
+```
+pip install exeteracovid
+```
 This will fetch exeteracovid, exetera, and other python packages that it relies on.
 # Running analyses
 
@@ -48,7 +50,7 @@ The Covid Symptom Study is delivered as a series of daily csv snapshots. If you 
 Importing the dataset requires the following:
  * The data snapshots
  * The schema file for the dataset `covid_schema.json` which can be found in this project
- * ExeTera and ExeTeraCovid, which can be installed using the command `pip install ExeTeraCovid`
+ * ExeTera and ExeTeraCovid, which you should have already installed
 
 ```
 exetera import
