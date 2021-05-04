@@ -16,21 +16,18 @@ from collections import defaultdict
 import numpy as np
 import numba
 
-# from exeteracovid.algorithms.age_from_year_of_birth import calculate_age_from_year_of_birth_fast
 from exeteracovid.algorithms.age_from_year_of_birth import calculate_age_from_year_of_birth_v1
-# from exeteracovid.algorithms.weight_height_bmi import weight_height_bmi_fast_1
 from exeteracovid.algorithms.weight_height_bmi import weight_height_bmi_v1
-# from exeteracovid.algorithms.inconsistent_symptoms import check_inconsistent_symptoms_1
 from exeteracovid.algorithms.inconsistent_symptoms import check_inconsistent_symptoms_v1
-# from exeteracovid.algorithms.temperature import validate_temperature_1
 from exeteracovid.algorithms.temperature import validate_temperature_v1
-# from exeteracovid.algorithms.combined_healthcare_worker import combined_hcw_with_contact
 from exeteracovid.algorithms.combined_healthcare_worker import combined_hcw_with_contact_v1
+from exeteracovid.algorithms.effective_test_date import effective_test_date_v1
 from exetera.core import persistence
-# from exetera.core.persistence import DataStore
+from exetera.core import operations as ops
 from exetera.core.session import Session
 from exetera.core import readerwriter as rw
 from exetera.core import fields, utils
+from exetera.core import dataframe
 
 # TODO: replace datastore with session and readers/writers with fields
 
@@ -847,3 +844,244 @@ def postprocess(dataset, destination, timestamp=None, flags=None):
             p_diet_counts = s.create_numeric(patients_dest, 'diet_counts', 'int32')
             s.merge_left(left_on=s.get(patients_dest['id']).data[:], right_on=d_distinct_pids,
                          right_fields=(d_pid_counts,), right_writers=(p_diet_counts,))
+
+
+def new_postprocess(s: Session,
+                    src_file, temp_file, dest_file, timestamp=None, flags=None):
+    import exetera
+
+    src_dataset = s.open_dataset(src_file, 'r', 'src')
+    dest_dataset = s.open_dataset(temp_file, 'w', 'dest')
+    temp_dataset = s.open_dataset(dest_file, 'w', 'temp')
+
+    has_patients = 'patients' in src_dataset
+    has_assessments = 'assessments' in src_dataset
+    has_tests = 'tests' in src_dataset
+    has_vaccine_doses = 'vaccine_doses' in src_dataset
+    has_vaccine_symptoms = 'vaccine_symptoms' in src_dataset
+    has_vaccine_hesitancy = 'vaccine_hesitancy' in src_dataset
+    has_mental_health = 'mental_health' in src_dataset
+
+    if has_patients:
+        src_patients = src_dataset['patients']
+        temp_patients = temp_dataset.create_dataframe('patients')
+        dest_patients = dest_dataset.create_dataframe('patients')
+
+        # sort on 'id'
+        with utils.Timer("calculating patient sorted index"):
+            indices = s.dataset_sort_index((src_patients['id'], src_patients['created_at']))
+
+        with utils.Timer("applying patient sorted index to patients"):
+            src_patients.apply_index(indices, temp_patients)
+        # src_patients.sort_on(temp_patients, ('id', 'created_at'), verbose=True)
+
+        with utils.Timer("Calculate age and age filters"):
+            calculate_age_from_year_of_birth_v1(temp_patients['year_of_birth'],
+                                                temp_patients['year_of_birth_valid'],
+                                                16,
+                                                90,
+                                                temp_patients.create_numeric('age', 'int32'),
+                                                temp_patients.create_numeric('age_filter', 'bool'),
+                                                temp_patients.create_numeric('16_to_90_years', 'bool'),
+                                                2020)
+
+        with utils.Timer("Clean height/weight/bmi and calculate filters"):
+            weight_height_bmi_v1(s, 40, 200, 110, 220, 15, 55,
+                                 None, None, None, None,
+                                 temp_patients['weight_kg'],
+                                 temp_patients['weight_kg_valid'],
+                                 temp_patients['height_cm'],
+                                 temp_patients['height_cm_valid'],
+                                 temp_patients['bmi'],
+                                 temp_patients['bmi_valid'],
+                                 temp_patients.create_numeric('weight_kg_clean', 'float32'),
+                                 temp_patients.create_numeric('40_to_200_kg', 'bool'),
+                                 None,
+                                 temp_patients.create_numeric('height_cm_clean', 'float32'),
+                                 temp_patients.create_numeric('110_to_220_cm', 'bool'),
+                                 None,
+                                 temp_patients.create_numeric('bmi_clean', 'float32'),
+                                 temp_patients.create_numeric('15_to_55_bmi', 'bool'),
+                                 None)
+
+        with utils.Timer("Calculate health_care_worker_with_contact"):
+            combined_hcw_with_contact_v1(s,
+                                         temp_patients['healthcare_professional'],
+                                         temp_patients['contact_health_worker'],
+                                         temp_patients['is_carer_for_community'],
+                                         temp_patients, 'health_worker_with_contact')
+
+        # finally, filter out the duplicate patient entries
+        with utils.Timer("Calculate duplicates"):
+            duplicate_filter = persistence.filter_duplicate_fields(src_patients['id'])
+
+        with utils.Timer("Filter patient duplicates and write to the destination dataset"):
+            temp_patients.apply_filter(duplicate_filter, dest_patients)
+
+    if has_assessments:
+        s_assessments = src_dataset['assessments']
+        d_assessments = dest_dataset.create_dataframe('assessments')
+
+        keep_first = 10000000
+        for k in s_assessments.keys():
+            with utils.Timer("Trimming {}".format(k)):
+                s_assessments[k].create_like(d_assessments, k)
+                if s_assessments[k].indexed:
+                    d_assessments[k].indices.write(s_assessments[k].indices[:keep_first+1])
+                    d_assessments[k].values.write(
+                        s_assessments[k].values[:d_assessments[k].indices[keep_first]])
+                else:
+                    d_assessments[k].data.write(s_assessments[k].data[:keep_first])
+
+        with utils.Timer("Sort assessments"):
+            s.sort_on(d_assessments, d_assessments, ('patient_id', 'created_at'), verbose=True)
+
+        # with utils.Timer("Sort assessments"):
+        #     s.sort_on(s_assessments, d_assessments, ('patient_id', 'created_at'), verbose=True)
+
+        with utils.Timer("Clean assessment temperatures"):
+            validate_temperature_v1(s, 35.0, 42.0,
+                                    d_assessments['temperature'],
+                                    d_assessments['temperature_unit'],
+                                    d_assessments['temperature_valid'],
+                                    d_assessments.create_numeric('temperature_c_clean', 'float32'),
+                                    d_assessments.create_numeric('temperature_35_to_42_inclusive',
+                                                                 'bool'),
+                                    d_assessments.create_numeric('temperature_modified', 'bool'))
+
+            check_inconsistent_symptoms_v1(s, d_assessments, d_assessments)
+
+    if has_tests:
+        src_tests = src_dataset['tests']
+        dest_tests = dest_dataset.create_dataframe('tests')
+
+        with utils.Timer("calculate effective test dates for tests"):
+            effective_test_date_v1(datetime(2020, 3, 1).timestamp(),
+                                   datetime.now().timestamp(),
+                                   src_tests['date_taken_specific'],
+                                   src_tests['date_taken_between_start'],
+                                   src_tests['date_taken_between_end'],
+                                   dest_tests.create_timestamp("effective_test_date"),
+                                   dest_tests.create_numeric('effective_test_date_valid', 'bool'))
+
+        with utils.Timer("Calculate sorted index for tests"):
+            test_indices = s.dataset_sort_index((src_tests['patient_id'],
+                                                 dest_tests['effective_test_date']))
+
+        with utils.Timer("Applying indices to test fields"):
+            dest_tests['effective_test_date'].apply_index(test_indices, in_place=True)
+            dest_tests['effective_test_date_valid'].apply_index(test_indices, in_place=True)
+            src_tests.apply_index(test_indices, dest_tests)
+
+    if has_vaccine_doses and False:
+        src_vaccine_doses = src_dataset['vaccine_doses']
+        dest_vaccine_doses = dest_dataset.create_dataframe('vaccine_doses')
+
+        print(len(src_vaccine_doses['date_taken_specific'].data),
+              np.count_nonzero(src_vaccine_doses['date_taken_specific'].data[:]))
+
+        with utils.Timer("Sorting vaccine symptoms DataFrame"):
+            vaccine_indices = s.dataset_sort_index((src_vaccine_doses['patient_id'],
+                                                    src_vaccine_doses['date_taken_specific']))
+
+            src_vaccine_doses.apply_index(vaccine_indices, dest_vaccine_doses)
+
+    if has_vaccine_symptoms and False:
+        src_vaccine_symptoms = src_dataset['vaccine_symptoms']
+        dest_vaccine_symptoms = dest_dataset.create_dataframe('vaccine_symptoms')
+
+        print(len(src_vaccine_symptoms['date_taken_specific'].data),
+              np.count_nonzero(src_vaccine_symptoms['date_taken_specific'].data[:]))
+
+        with utils.Timer("Sorting vaccine symptoms DataFrame"):
+            vaccine_indices = s.dataset_sort_index((src_vaccine_symptoms['patient_id'],
+                                                src_vaccine_symptoms['date_taken_specific']))
+
+            src_vaccine_symptoms.apply_index(vaccine_indices, dest_vaccine_symptoms)
+
+    if has_vaccine_hesitancy and False:
+        src_vaccine_hesitancy = src_dataset['vaccine_hesitancy']
+        dest_vaccine_hesitancy = dest_dataset.create_dataframe('vaccine_hesitancy')
+
+        with utils.Timer("Sorting vaccine hesitancy DataFrame"):
+            s.sort_on(src_vaccine_hesitancy, dest_vaccine_hesitancy, ('patient_id', 'created_at'))
+
+    if has_mental_health and False:
+        src_mental_health = src_dataset['mental_health']
+        dest_mental_health = dest_dataset.create_dataframe('mental_health')
+
+        with utils.Timer("Sorting mental health DataFrame"):
+            s.sort_on(src_mental_health, dest_mental_health, ('patient_id', 'created_at'))
+
+    # Phase 2: merging and aggregating fields
+
+    if has_patients and has_assessments:
+        d_patients = dest_dataset['patients']
+        d_assessments = dest_dataset['assessments']
+        t_agg_assessments = temp_dataset.create_dataframe('aggregated_assessments')
+
+        spans = s.get_spans(d_assessments['patient_id'])
+
+        t_agg_assessments['patient_id'] = \
+            d_assessments['patient_id'].apply_spans_first(spans)
+
+        t_agg_assessments.create_numeric('assessment_counts', 'int32')
+        s.apply_spans_count(spans, t_agg_assessments['assessment_counts'])
+
+        t_agg_assessments['first_assessment_day'] = \
+            d_assessments['created_at_day'].apply_spans_first(spans)
+
+        t_agg_assessments['last_assessment_day'] = \
+            d_assessments['created_at_day'].apply_spans_last(spans)
+
+        print(np.unique(d_assessments['tested_covid_positive'].data[:], return_counts=True))
+        t_agg_assessments['max_assessment_test_result'] = \
+            d_assessments['tested_covid_positive'].apply_spans_max(spans)
+
+        with utils.Timer("merging aggregated assessment data to patient data"):
+            right_fields_to_copy = tuple(k for k in t_agg_assessments.keys() if k != 'patient_id')
+            dataframe.merge(d_patients, t_agg_assessments, d_patients,
+                            left_on=('id',), right_on=('patient_id',),
+                            left_fields=[],
+                            right_fields=right_fields_to_copy,
+                            how='left')
+            d_patients.rename('valid_r', 'has_assessment_entries')
+
+        print('max_assessment_test_result',
+              np.unique(d_patients['max_assessment_test_result'].data[:], return_counts=True))
+
+    if has_patients and has_tests:
+        d_patients = dest_dataset['patients']
+        d_tests = dest_dataset['tests']
+        t_agg_tests = temp_dataset.create_dataframe('aggregated_tests')
+
+        spans = s.get_spans(d_tests['patient_id'])
+
+        t_agg_tests['patient_id'] = \
+            d_tests['patient_id'].apply_spans_first(spans)
+
+        t_agg_tests.create_numeric('test_counts', 'int32')
+        s.apply_spans_count(spans, t_agg_tests['test_counts'])
+
+        t_agg_tests['max_test_result'] = \
+            d_tests['result'].apply_spans_max(spans)
+
+        with utils.Timer("merging aggregated test data to patient data"):
+            right_fields_to_copy = tuple(k for k in t_agg_tests.keys() if k != 'patient_id')
+            dataframe.merge(d_patients, t_agg_tests, d_patients,
+                            left_on=('id',), right_on=('patient_id',),
+                            left_fields=[], right_fields=None,
+                            how='left')
+            d_patients.rename('valid_r', 'has_test_entries')
+
+    if has_patients and has_vaccine_doses:
+        d_patients = dest_dataset['patients']
+        d_vaccine_doses = dest_dataset['tests']
+        t_agg_doses = temp_dataset.create_dataframe('aggregated_vaccine_doses')
+
+        pid_spans = s.get_spans(d_vaccine_doses['patient_id'])
+
+        t_agg_doses['patient_id'] = \
+            d_vaccine_doses['patient_id'].apply_spans_first(pid_spans)
+        t_agg_doses['course_count'] = \
+            d_vaccine_doses['vaccine_id'].

@@ -26,6 +26,7 @@ except ModuleNotFoundError:
     import exetera
 
 from exeteracovid.processing import postprocess
+from exetera.core.session import Session
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--version', action='version', version=exetera.__version__)
@@ -34,13 +35,15 @@ parser.add_argument('-i', '--input', required=True, help='The dataset to load')
 parser.add_argument('-o', '--output', required=True,
                     help='The dataset to write results to. If this is an existing file, it will be'
                                      ' overwritten')
+parser.add_argument('-t', '--temp', required=True,
+                    help="A temporary file that holds intermediate data to be deleted.")
 parser.add_argument('-d', '--daily', action='store_true',
                     help='If set, generate daily assessments from assessments')
 
 args = parser.parse_args()
 
 if 'dev' in exetera.__version__:
-    msg = ("Warning: this is a development version of exetera ({}). "
+    msg = ("Warning: this is a development version of exetera ({}). " 
            "Please use one of the release versions for actual work")
     print(msg.format(exetera.__version__))
 
@@ -51,6 +54,9 @@ flags = set()
 if args.daily is True:
     flags.add('daily')
 print(exetera.__version__)
-with h5py.File(args.input, 'r') as ds:
-    with h5py.File(args.output, 'w') as ts:
-        postprocess.postprocess(ds, ts, timestamp, flags)
+# with h5py.File(args.input, 'r') as ds:
+#     with h5py.File(args.output, 'w') as ts:
+#         postprocess.postprocess(ds, ts, timestamp, flags)
+
+with Session() as s:
+    postprocess.new_postprocess(s, args.input, args.temp, args.output, flags)
