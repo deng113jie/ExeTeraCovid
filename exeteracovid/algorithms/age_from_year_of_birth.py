@@ -20,6 +20,21 @@ def calculate_age_from_year_of_birth_fast(datastore, min_age, max_age,
                                           year_of_birth, year_of_birth_filter,
                                           age, age_filter, age_range_filter, year,
                                           chunksize=None, timestamp=None):
+    """
+    A faster way to calculate the age of patient using the 'year_of_birth' column.
+
+    :param datastore: The Exetera session object.
+    :param min_age: The minimal age to filter out patients.
+    :param max_age: The maximum age to filter out patients.
+    :param year_of_birth: The yaer_of_birth field from dataset.
+    :param year_of_birth_filter: The filter apply to 'age' result after conversion.
+    :param age: The field or numpy array to store the age result to.
+    :param age_filter: The field or numpy array to store the filter based on year_of_birth_filter.
+    :param age_range_filter: The field or numpy array to store the filter based on min_age and max_age.
+    :param year: Current year to calculate the age from.
+    :param chunksize: The chunk size to use when write content to HDF5.
+    :param timestamp: The timestamp to tag onto the result.
+    """
     warnings.warn("deprecated", DeprecationWarning)
     yob_v = datastore.get_reader(year_of_birth)
     yob_f = datastore.get_reader(year_of_birth_filter)
@@ -37,6 +52,18 @@ def calculate_age_from_year_of_birth_fast(datastore, min_age, max_age,
 def calculate_age_from_year_of_birth_v1(year_of_birth, year_of_birth_filter,
                                         min_age, max_age,
                                         age, age_filter, age_range_filter, year):
+    """
+    Calculate the age of patient using the 'year_of_birth' column.
+
+    :param year_of_birth: The yaer_of_birth field from dataset.
+    :param year_of_birth_filter: The filter apply to 'age' result after conversion.
+    :param min_age: The minimal age to filter out patients.
+    :param max_age: The maximum age to filter out patients.
+    :param age: The field or numpy array to store the age result to.
+    :param age_filter: The field or numpy array to store the filter based on year_of_birth_filter.
+    :param age_range_filter: The field or numpy array to store the filter based on min_age and max_age.
+    :param year: Current year to calculate the age from.
+    """
     if isinstance(year_of_birth, fields.Field):
         yob_v = year_of_birth.data[:]
     else:
