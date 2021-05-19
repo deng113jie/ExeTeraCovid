@@ -10,6 +10,12 @@ def score_component(fields, maps, fn, length):
 
 
 def gut_friendly_score(fields: dict):
+    """
+    To calculate the Gut friendly diet score. Please see https://covid.joinzoe.com/us-post/covid-diet-feedback for details.
+
+    :param fields: The diet dataframe from Covid dataset.
+    :return: The score on each record.
+    """
     weights = np.asarray([0, 0, 0.07, 0.14, 0.36, 0.71, 1.5, 3.5, 5])
 
     red = {'ffq_chips', 'ffq_crisps_snacks', 'ffq_fast_food', 'ffq_ice_cream',
@@ -40,6 +46,13 @@ def gut_friendly_score(fields: dict):
 
 
 def healthy_diet_index(fields: dict):
+    """
+    Quantify the diet data with different values. As the data in diet dataframe is categorized such as 'once_a_week' or
+        'one_to_two_a_day', here map the categlory into numeric values for later calculation.
+
+    :param fields: The diet dataframe.
+    :return: The diet scores composed by fruit, fish, etc.
+    """
     nda = lambda x: np.array(x, dtype=np.float32)
 
     fruit_maps = {

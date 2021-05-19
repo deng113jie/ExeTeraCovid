@@ -1,9 +1,23 @@
 import numpy as np
 
+
 def consolidate_test_dates_v1(ds, created_at, date_taken_specific,
                               date_taken_between_start, date_taken_between_end,
                               effective_test_date,
                               initial_filter=None, first_timestamp=None, last_timestamp=None):
+    """
+    Infer the test date from 'date_taken_specific', 'date_taken_between_start' and 'date_taken_between_end' columns.
+
+    :param ds: The Exetera session instance.
+    :param created_at: Created_at column from dataset, indicates when was the record created.
+    :param date_taken_specific: Date_taken_specific column from dataset.
+    :param date_taken_between_start: Date_taken_between_start column from dataset.
+    :param date_taken_between_end: Date_taken_between_end column from dataset.
+    :param effective_test_date: The field to write the result to.
+    :param initial_filter: Initial filter to filter out unwanted records.
+    :param first_timestamp: Date boundary set by user to filter out unwanted records.
+    :param last_timestamp: Date boundary set by user to filter out unwanted records.
+    """
     raw_t_cats = created_at[:]
     raw_t_dts = date_taken_specific[:]
     raw_t_dsbs = date_taken_between_start[:]
@@ -50,7 +64,7 @@ def consolidate_test_dates_v1(ds, created_at, date_taken_specific,
                                raw_t_dts,
                                raw_t_dsbs + (raw_t_dsbe - raw_t_dsbs) / 2)
 
-    # remove tests where the test date is after the created at date
+    # remove tests where the test date is after the created at date TODO confirm
     cur_filter = test_timestamps <= raw_t_cats
     test_filter = test_filter & cur_filter
     print("standard test filter 7:", np.count_nonzero(test_filter), len(test_filter))

@@ -145,6 +145,9 @@ def weight_height_bmi_fast_1(
     weights_clean, weights_filter, weights_modified_flag,
     heights_clean, heights_filter, heights_modified_flag,
     bmis_clean, bmis_filter, bmis_modified_flag):
+    """
+    Deprecated, please use weight_height_bmi.weight_height_bmi_v1.
+    """
 
     warnings.warn("deprecated", DeprecationWarning)
 
@@ -206,6 +209,36 @@ def weight_height_bmi_v1(
     weights_clean, weights_filter, weights_modified_flag,
     heights_clean, heights_filter, heights_modified_flag,
     bmis_clean, bmis_filter, bmis_modified_flag):
+    """
+    Filter weight, height, and bmi based on user specified minimal and maximum values.
+
+    :param session: The Exetera session instance.
+    :param min_weight: The minimum weight to filter.
+    :param max_weight: The maximum weight to filter.
+    :param min_height: The minumum height to filter.
+    :param max_height: The maximum height to filter.
+    :param min_bmi: The minumum bmi to filter.
+    :param max_bmi: The maximum bmi to filter.
+    :param genders: Not used.
+    :param gender_filter: Not used.
+    :param ages: Not used.
+    :param age_filter: Not used.
+    :param weights: The weight column from dataset.
+    :param weight_filter: The weight filter specified by user.
+    :param heights: The height column from dataset.
+    :param height_filter: The height filter specified by user.
+    :param bmis: The bmi data column.
+    :param bmi_filter: The bmi filter specified by user.
+    :param weights_clean: The field to write the weight data to.
+    :param weights_filter: The field to write the weight filter to.
+    :param weights_modified_flag: The field to identify if the weight has been modified.
+    :param heights_clean: The field to write the height data to.
+    :param heights_filter: The field to write the height filter to.
+    :param heights_modified_flag: The field to identify if the height has been modified.
+    :param bmis_clean:The field to write the bmi data to.
+    :param bmis_filter: The field to write the bmi filter to.
+    :param bmis_modified_flag: The field to identify if the bmi has been modified.
+    """
 
     raw_weightsv = session.get(weights).data[:]
     raw_weightsf = session.get(weight_filter).data[:]
