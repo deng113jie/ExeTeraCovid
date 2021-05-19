@@ -20,6 +20,21 @@ This project contains the following:
 * **Algorithms**: A number of useful algorithms for cleaning / processing of Covid Symptom Study data, to be used in your own scripts
 * **Processing**: A number of useful pieces of functionality, to be used in your own scripts
 
+# Installation
+
+If you want to make heavy use of the jupyter notebooks that come with ExeTeraCovid, it is recommended that you clone this repository.
+You should install it by navigating to the top level of the repository and pip installing locally, as follows:
+```
+git clone git@github.com:kcl-bmeis/exeteracovid.git
+cd exeteracovid
+pip install -e .
+```
+
+If you just want to make use of ExeTera and ExeTeraCovid in your own scripts / code, you should use pip to install them:
+```
+pip install exeteracovid
+```
+This will fetch exeteracovid, exetera, and other python packages that it relies on.
 # Running analyses
 
 Running analyses is a simple process:
@@ -35,7 +50,7 @@ The Covid Symptom Study is delivered as a series of daily csv snapshots. If you 
 Importing the dataset requires the following:
  * The data snapshots
  * The schema file for the dataset `covid_schema.json` which can be found in this project
- * ExeTera, which can be installed using the command `pip install ExeTera`
+ * ExeTera and ExeTeraCovid, which you should have already installed
 
 ```
 exetera import
