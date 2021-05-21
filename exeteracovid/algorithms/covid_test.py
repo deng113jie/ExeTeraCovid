@@ -13,6 +13,9 @@ import numpy as np
 
 
 class ValidateCovidTestResultsFacVersion1PreHCTFix:
+    """
+    Deprecated, please use covid_test.ValidateCovidTestResultsFacVersion2().
+    """
     def __init__(self, hcts, tcps, filter_status, hct_results, results, filter_flag, show_debug=False):
         self.valid_transitions = {0: (0, 1, 2, 3), 1: (0, 1, 2, 3), 2: (0, 2), 3: (0, 3)}
         self.upgrades = {0: (0, 1, 2, 3), 1: (2, 3), 2: tuple(), 3: tuple()}
@@ -68,6 +71,9 @@ class ValidateCovidTestResultsFacVersion1PreHCTFix:
 
 
 class ValidateCovidTestResultsFacVersion1:
+    """
+    Deprecated, please use covid_test.ValidateCovidTestResultsFacVersion2().
+    """
     def __init__(self, hcts, tcps, filter_status, hct_results, results, filter_flag, show_debug=False):
         self.valid_transitions = {0: (0, 1, 2, 3), 1: (0, 1, 2, 3), 2: (0, 2), 3: (0, 3)}
         self.upgrades = {0: (0, 1, 2, 3), 1: (2, 3), 2: tuple(), 3: tuple()}
@@ -145,6 +151,18 @@ class ValidateCovidTestResultsFacVersion1:
 
 class ValidateCovidTestResultsFacVersion2:
     def __init__(self, hcts, tcps, filter_status, hct_results, results, filter_flag, show_debug=False):
+        """
+        Check if the test result reported by users logical, for example if multiple test results reported, then should
+            follow a sequence from empty to yes or no, not the other way around.
+
+        :param htcs: not used.
+        :param tcps: The test results column.
+        :param filter_status: A field to indicates invalid test results.
+        :param hct_results: Not used.
+        :param results: An intermedia array to store if the user ever reported positive tests.
+        :param filter_flag: A flag to filter invalid tests.
+        :param show_debug: A flag to switch debugging info, such as the status of test results.
+        """
         self.valid_transitions = {0: (0, 1, 2, 3), 1: (0, 1, 2, 3), 2: (0, 2), 3: (0, 3)}
         self.valid_transitions_before_yes =\
             {0: (0, 1, 2, 3), 1: (0, 1, 2, 3), 2: (0, 1, 2, 3), 3: (0, 3)}
@@ -158,6 +176,14 @@ class ValidateCovidTestResultsFacVersion2:
         self.show_debug = show_debug
 
     def __call__(self, patient_id, filter_status, start, end):
+        """
+        Perform the result check.
+
+        :param patient_id: Not used.
+        :param filter_status: A field to indicates invalid test results.
+        :param start: Start position of the rows to perform the check.
+        :param end: End position of the rows to perform the check.
+        """
         # validate the subrange
         invalid = False
         max_value = 0
