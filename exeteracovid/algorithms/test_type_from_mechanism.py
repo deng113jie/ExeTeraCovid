@@ -6,6 +6,19 @@ from exetera.core import validation as val
 def test_type_from_mechanism_v1(datastore, mechanism, mechanism_free,
                                 pcr_standard_answers, pcr_strong_inferred, pcr_weak_inferred,
                                 antibody_standard_answers, antibody_strong_inferred, antibody_weak_inferred):
+    """
+    Classify the test mechanism by using data from the 'mechanism' field and user filled free text.
+
+    :param datastore: The Exetera session instance.
+    :param mechanism: The 'mechanism' column from the tests dataframe.
+    :param mechanism_free: The 'mechanism_free' column from the tests dataframe.
+    :param pcr_standard_answers: The field to indicate a standard pcr test performed.
+    :param pcr_strong_inferred: The field to indicate a strong pcr test performed.
+    :param pcr_weak_inferred: The field to indicate a weak pcr test performed.
+    :param antibody_standard_answers: The field to indicate a standard antibody test performed.
+    :param antibody_strong_inferred: The field to indicate a strong antibody test performed.
+    :param antibody_weak_inferred: The field to indicate a weak antibody test performed.
+    """
 
     def search_for_substring(text_entries, pattern):
         filt = np.zeros(len(text_entries), np.bool)
