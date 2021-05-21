@@ -1,5 +1,9 @@
 import numpy as np
 
+"""
+An example to infer the positiveness based on bio information and symptoms using logistic regression.
+"""
+
 dict_coef = {
     'intercept': np.float64(-1.32167356),
     'persistent_cough': np.float64(0.30872189),
@@ -21,6 +25,14 @@ dict_sd = {
 
 
 def logit_prediction(df, dict_coef, index):
+    """
+    Compute the logged index value using bio information and symptoms.
+
+    :param df: The dataset contains bio information and symptoms.
+    :param dict_coef: The model coefficient parameter.
+    :param index: The index of patient to calculate the value.
+    :return: The value computed.
+    """
     temp_sum = np.float64(0)
     for k in dict_coef.keys():
         if k != 'intercept':
@@ -37,6 +49,15 @@ def logit_prediction(df, dict_coef, index):
 
 
 def imputation_pos_all(df_umerge, distr, samplecount, threshold=None):
+    """
+    Infer the positiveness.
+
+    :param df_umerge: The dataset contains bio information and symptoms.
+    :param distr: The distribution parameters.
+    :param samplecount: Number of samples in this batch.
+    :param threshold: The threshold used for making decision.
+    :return: The result of likelihood of positiveness for each patient.
+    """
     # df_umerge = pd.merge(df_assess, df_patred, left_on='patient_id', right_on='id', how='left')
     # df_umerge = df_umerge.drop_duplicates(['patient_id', 'interval_days']) #not needed due to daily assessments
     list_temp = []
@@ -62,6 +83,18 @@ def imputation_pos_all(df_umerge, distr, samplecount, threshold=None):
 def nature_medicine_model_1(persistent_cough, skipped_meals, loss_of_smell, fatigue,
                             age_in_assessment_space, gender_in_assessment_space,
                             threshold=None):
+    """
+    Infer the positiveness based on bio information and symptoms using logistic regression.
+
+    :param persistent_cough: The 'persistent_cough' column from assessments dataframe.
+    :param skipped_meals: The 'skipped_meals' column from assessments dataframe.
+    :param loss_of_smell: The 'loss_of_smell' column from assessments dataframe.
+    :param fatigue: The 'fatigue' column from assessments dataframe.
+    :param age_in_assessment_space: The 'age' column of each patient.
+    :param gender_in_assessment_space: The 'gender' column of each patient.
+    :param threshold: The threshold used for making decision.
+    :return: The result of likelihood of positiveness for each patient.
+    """
     dataset = {
         'persistent_cough': persistent_cough,
         'skipped_meals': skipped_meals,
@@ -79,3 +112,4 @@ def nature_medicine_model_1(persistent_cough, skipped_meals, loss_of_smell, fati
 
     results = imputation_pos_all(dataset, distr, samplecount, threshold)
     return results
+

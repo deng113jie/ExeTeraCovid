@@ -18,12 +18,26 @@ from exetera.core import validation as val
 
 class ValidateTemperature1:
     def __init__(self, min_temp_incl, max_temp_incl, f_missing_temp, f_bad_temp):
+        """
+        Check the temperature field and convert fahrenheit to celsius.
+
+        :param min_temp_incl: The minimal numeric value for temperature.
+        :param max_temp_incl: The maximum numeric value for temperature.
+        :param f_missing_temp: An array marking missing temperature fields.
+        :param f_bad_temp: An array marking invalid temperature fields.
+        """
         self.min_temp_incl = min_temp_incl
         self.max_temp_incl = max_temp_incl
         self.f_missing_temp = f_missing_temp
         self.f_bad_temp = f_bad_temp
 
     def __call__(self, temps, filter_list):
+        """
+        Perform the temperature check.
+
+        :param temps: The temperature column from assessments dataframe.
+        :param filter_list: The filter marking unusable temperature fields, e.g. missing value or invalid.
+        """
         temperature_c = np.zeros_like(temps, dtype=np.float)
         for ir, t in enumerate(temps):
             if t == '':
