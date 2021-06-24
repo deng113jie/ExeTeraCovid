@@ -2,6 +2,15 @@ from exetera.core.utils import Timer
 from exetera.core import fields as fld
 
 def merge_daily_assessments_v1(s, src_group, dest_group, overrides=None):
+    """
+    Organize the assessment dataset to group record of patients in each day.
+
+    :param s: The Exetera session instance.
+    :param src_group: The source dataframe that contains the dataset.
+    :param dest_group: The destination dataframe to write the result to.
+    :param overrides: The group function to apply to different columns, e.g. latest datetime for 'updated_at'
+        column, or concat for text columns.
+    """
     print("generate daily assessments")
     patient_ids_ = s.get(src_group['patient_id']).data[:]
     created_at_days_ = s.get(src_group['created_at_day']).data[:]

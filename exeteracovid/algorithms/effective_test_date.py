@@ -1,13 +1,26 @@
 import numpy as np
 
-"""
-Filter tests for well-formedness and sensible date range
-Returns a filtered set of effective test 
-"""
+
 def effective_test_date(datastore, start_timestamp, end_timestamp,
                         created_at, date_taken_specific,
                         date_taken_between_start, date_taken_between_end,
                         dest_group, dest_name, filter_group, filter_name):
+    """
+    Filter tests for well-formedness and sensible date range specified.
+
+    :param datastore: The Exetera session instance.
+    :param start_timestamp: The earliest timestamp to filter on the tests.
+    :param end_timestamp: The latest timestamp to filter on the tests.
+    :param created_at: The 'create_at' column from Covid dataset.
+    :param date_taken_specific: The 'date_taken_specific' column from Covid dataset.
+    :param date_taken_between_start: The 'date_taken_between_start' column from Covid dataset.
+    :param date_taken_between_end: The 'date_taken_between_end' column from Covid dataset.
+    :param dest_group: The destination field to write the result to.
+    :param dest_name: The name of the destination field.
+    :param filter_group: The filter field to write the result filter to.
+    :param filter_name: The name of the filter field.
+    :return: A filtered set of effective test.
+    """
 
     raw_t_cats = created_at[:]
     raw_t_dts = date_taken_specific[:]

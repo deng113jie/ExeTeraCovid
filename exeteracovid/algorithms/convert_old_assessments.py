@@ -1,14 +1,14 @@
 
 from collections import defaultdict
 
-from exetera.core import dataset
+from exetera.core import csvdataset
 from exeteracovid.algorithms import convert_assessment_tests
 
 
 class FilterNewAssessmentsV1:
 
     def __init__(self, test_ds, patients):
-        if not isinstance(test_ds, dataset.Dataset):
+        if not isinstance(test_ds, csvdataset.Dataset):
             raise ValueError("'test_ds' must be of type Dataset")
         if not isinstance(patients, type(defaultdict(convert_assessment_tests.TestIndex))):
             raise ValueError("'patients' must be of type 'defaultdict(TestIndex)'")

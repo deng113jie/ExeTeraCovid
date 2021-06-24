@@ -8,7 +8,16 @@ def covid_test_date_v1(session: Session,
                        dest_test_table,
                        dest_field_name='test_date',
                        dest_field_flags_name='test_date_valid'):
+    """
+    Infer the test date from 'date_taken_specific', 'date_taken_between_start' and 'date_taken_between_end' columns.
 
+    :param session: The Exetera session instance.
+    :param test_table: The tests dataframe which contains 'date_taken_specific', 'date_taken_between_start' and
+        'date_taken_between_end' columns..
+    :param dest_test_table: The destination dataframe to write the result to.
+    :param dest_field_name: The name of the result date column.
+    :param dest_field_flags_name: The name of the column to store the flat indicates if the date is set or inferred.
+    """
     exact = session.get(test_table['date_taken_specific'])
     exact_ = exact.data[:]
     between_start_ = session.get(test_table['date_taken_between_start']).data[:]

@@ -4,6 +4,13 @@ from exetera.core import utils
 
 
 def method_paper_model(ds, symptoms_reader_dict, prediction):
+    """
+    A leaner model to predict Covid positiveness from symptoms.
+
+    :param ds: The Exetera session instance.
+    :param symptoms_reader_dict: The dataframe which stores symptoms data.
+    :param prediction: A field to store the prediction result.
+    """
 
     intercept = -1.19015973
     weights = {'persistent_cough': 0.23186655,

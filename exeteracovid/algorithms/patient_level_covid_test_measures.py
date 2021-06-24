@@ -7,6 +7,15 @@ def test_counts_per_patient_v1(session: Session,
                             test_table,
                             dest_patient_table,
                             dest_patient_name):
+    """
+    Counting the number of tests performed for each patient id.
+
+    :param session: The Exetera session instance.
+    :param patient_table: The patient dataframe.
+    :param test_table: The tests dataframe.
+    :param dest_patient_table: The destination dataframe to store the results.
+    :param dest_patient_name: The name of the destination field to store the results.
+    """
 
     pid = 'id'
     pids = session.get(patient_table[pid])
@@ -37,6 +46,16 @@ def first_test_date_per_patient(session: Session,
                                 test_date_name,
                                 dest_patient_table,
                                 dest_patient_name):
+    """
+    Filter the first date of test performed for each patient id.
+
+    :param session: The Exetera session instance.
+    :param patient_table: The patient dataframe.
+    :param test_table: The tests dataframe.
+    :param test_date_name: The name of the test dataframe, not used.
+    :param dest_patient_table: The destination dataframe to store the results.
+    :param dest_patient_name: The name of the destination field to store the results.
+    """
 
     pid = 'id'
     pids = session.get(patient_table[pid])

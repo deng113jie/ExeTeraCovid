@@ -12,11 +12,28 @@ from exetera.core.utils import check_input_lengths
 
 
 class CheckTestingConsistency:
+    """
+    Checking consistency over patient's 'had_covid_test' field from assessments dataframe, with 'result' field from tests
+        dataframe, mark inconsistent patients.
+    """
     def __init__(self, f_inconsistent_not_tested, f_inconsistent_tested):
+        """
+        To initialize the inconsistency check.
+
+        :param f_inconsistent_not_tested: A array of patients that 'had_covid_test' set as False, but has 'result' set.
+        :param f_inconsistent_tested: A array of patients that 'had_covid_test' set as True, but has no 'result' set.
+        """
         self.f_inconsistent_not_tested = f_inconsistent_not_tested
         self.f_inconsistent_tested = f_inconsistent_tested
 
     def __call__(self, had_test, test_result, flags):
+        """
+        To perform the inconsistency check.
+
+        :param had_test: The 'had_covid_test' column from assessments dataframe.
+        :param test_result: The 'result' result column from tests dataframe.
+        :param flags: The flag identify inconsistency.
+        """
         # if len(had_test) != len(test_result):
         #     error_str = "'had_test' (length {} must be the same length as 'test_result' (length {})"
         #     raise ValueError(error_str.format(len(had_test), len(test_result)))

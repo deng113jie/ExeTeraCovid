@@ -32,6 +32,9 @@ class CheckInconsistentSymptoms:
 
 
 def check_inconsistent_symptoms_1(datastore, src_assessments, dest_assessments, timestamp=None):
+    """
+    Deprecated, please use inconsistent_symptoms.check_inconsistent_symptoms_v1().
+    """
     warnings.warn("deprecated", DeprecationWarning)
     if timestamp is None:
         timestamp = datastore.timestamp
@@ -85,7 +88,15 @@ def check_inconsistent_symptoms_1(datastore, src_assessments, dest_assessments, 
 
 
 def check_inconsistent_symptoms_v1(session, src_assessments, dest_assessments, timestamp=None):
+    """
+    Checking if the health status recorded by user is consistent over different columns, for example in 'health_status'
+        reported healthy but also reported 'fever'.
 
+    :param session: The Exetera session instance.
+    :param src_assessments: The assessments dataframe contains reported data.
+    :param dest_assessments: The destination dataframe to write the result columns to.
+    :param timestamp: The timestamp to use when create destination fields.
+    """
     generated_health_fields = ()
     # generated_health_fields = ('has_temperature',)
 

@@ -29,6 +29,17 @@ class MergeAssessmentRows:
                  resulting_fields, created_fields, existing_field_indices,
                  custom_field_aggregators,
                  source_filter, resulting_filter):
+        """
+        Aggregate the assessment records.
+
+        :param concat_field_indices: Deprecated.
+        :param resulting_fields: A dictionary to put the result fields to.
+        :param created_fields: A dict of created fields.
+        :param existing_field_indices: The indices of fields to process.
+        :param custom_field_aggregators: The custom specified function to perform when aggregate the content.
+        :param source_filter: The filter to work on source dataset.
+        :param resulting_filter: The field to store the result filter. 
+        """
         print(created_fields.keys())
         self.rfindex = 0
         self.concat_indices = concat_field_indices
@@ -55,6 +66,14 @@ class MergeAssessmentRows:
         self.resulting_filter[self.rfindex] |= self.source_filter[source_index]
 
     def __call__(self, fields, dummy, start, end):
+        """
+        Perform the aggregator.
+
+        :param fields: The dataset fields to aggregate.
+        :param dummy: Not used.
+        :param start: The row number to start aggregation.
+        :param end: The row number to end aggregation.
+        """
         # first pass: determine escape sequences for fields that need concatenation
         # esq_sequences = [1] * len(self.concat_indices)
         # for i in range(start + 1, end + 1):

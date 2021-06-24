@@ -9,6 +9,9 @@ def combined_hcw_with_contact(datastore,
                               healthcare_professional, contact_health_worker,
                               is_carer_for_community,
                               group, name):
+    """
+    Deprecated, please use combined_healthcare_worker.combined_hcw_with_contact_v1().
+    """
     warnings.warn("deprecated", DeprecationWarning)
     raw_hcp = val.raw_array_from_parameter(datastore, 'healthcare_professional',
                                            healthcare_professional)
@@ -37,6 +40,16 @@ def combined_hcw_with_contact_v1(session,
                                  healthcare_professional, contact_health_worker,
                                  is_carer_for_community,
                                  group, name):
+    """
+    Identify the users in Covid dataset who are health workers with contact history.
+
+    :param healthcare_professional: The healthcare_professional column from dataset.
+    :param contact_health_worker: The contact_health_worker column from dataset.
+    :param is_carer_for_community: The is_carer_for_community column from dataset.
+    :param group: The dataframe to store the result field to.
+    :param name: The name of the result field.
+    :return: The categorical field which identifying health workers with contact history.
+    """
     raw_hcp = val.raw_array_from_parameter(session, 'healthcare_professional',
                                            healthcare_professional)
     filter_ = np.where(raw_hcp == 0,
