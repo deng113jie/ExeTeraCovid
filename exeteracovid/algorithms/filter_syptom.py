@@ -5,7 +5,7 @@ def at_least_one_symptom(assessment_df):
     Filter the rows with at least one symptom reported.
 
     :param assessment_df: The assessment dataframe.
-    :returns: A numpy array of bool marking matched rows.
+    :return: A numpy array of bool marking matched rows.
     """
     list_symptoms = ['fatigue', 'abdominal_pain', 'chest_pain', 'sore_throat', 'shortness_of_breath',
                      'skipped_meals', 'loss_of_smell', 'unusual_muscle_pains', 'headache', 'hoarse_voice', 'delirium',
@@ -29,7 +29,7 @@ def nhs_symptom(assessment_df):
     Filter the rows with symptoms match with NHS announced main Covid symptoms: high temperature, cough and loss of smell.
 
     :param assessment_df: The assessment dataframe.
-    :returns: A numpy array of bool marking matched rows.
+    :return: A numpy array of bool marking matched rows.
     """
     list_symptoms = ['loss_of_smell', 'fever', 'persistent_cough']
     if len(assessment_df.keys()) == 0:
