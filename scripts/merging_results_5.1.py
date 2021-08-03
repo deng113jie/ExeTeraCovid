@@ -1,18 +1,29 @@
-import itertools
-import numpy as np
-import pandas as pd
-import exetera as hy
-import h5py
-import glob
+import csv
 from datetime import datetime, timezone
 
+import numpy as np
 
 from exetera.core.session import Session
 from exetera.core.persistence import DataStore
 from exetera.core import utils, dataframe, dataset
 from exetera.core import persistence as prst
-from exetera.core import readerwriter as rw
-from exeteracovid.algorithms.test_type_from_mechanism import test_type_from_mechanism_v1
+from exeteracovid.algorithms.test_type_from_mechanism import test_type_from_mechanism_v2
+from exeteracovid.algorithms.covid_test_date import covid_test_date_v1
+from exeteracovid.algorithms.test_type_from_mechanism import pcr_standard_summarize
+
+
+def save_df_to_csv(df, csv_name, chunk=200000):  # chunk=100k ~ 20M/s
+    with open(csv_name, 'w', newline='') as csvfile:
+        columns = list(df.keys())
+        writer = csv.writer(csvfile)
+        writer.writerow(columns)
+        field1 = columns[0]
+        for current_row in range(0, len(df[field1].data), chunk):
+            torow = current_row + chunk if current_row + chunk < len(df[field1].data) else len(df[field1].data)
+            batch = list()
+            for k in df.keys():
+                batch.append(df[k].data[current_row:torow])
+            writer.writerows(list(zip(*batch)))
 
 
 ds = DataStore()
@@ -43,20 +54,9 @@ with Session() as s:
     with utils.Timer('applying sort'):
         for k in src_test.keys():
             dataframe.copy(src_test[k], out_test, k)
-            # reader = ds.get_reader(src_test[k])
-            # writer = reader.get_writer(out_test, k, ts, write_mode='overwrite')
-            # writer.write(reader[:])
 
-    # Filter for taken specific / date between (for the test table for now)
-    # Create new field date_effective_test that is date taken specific and if not available take the average between date_end and date_start
-    specdate_filter = out_test['date_taken_specific'].data[:] != 0
-    date_spec =  out_test['date_taken_specific'].data[:]
-    date_start =  out_test['date_taken_between_start'].data[:]
-    date_end =  out_test['date_taken_between_end'].data[:]
-    date_fin = np.where(specdate_filter == True, date_spec, date_start + 0.5 * (date_end - date_start))
-    #ds.get_timestamp_writer(out_test, 'date_effective_test', ts).write(date_fin)
-    date_effective_test = out_test.create_timestamp('date_effective_test')
-    date_effective_test.data.write(date_fin)
+    # convert test date
+    covid_test_date_v1(s, out_test, out_test, 'date_effective_test')
 
     # Filtering only definite results
 
@@ -64,13 +64,10 @@ with Session() as s:
     results_filt = np.where(np.logical_or(results_raw == 4, results_raw == 3), True, False)
     for k in out_test.keys():
         out_test[k].apply_filter(results_filt, in_place=True)
-        # reader = ds.get_reader(out_test[k])
-        # writer = reader.get_writer(out_test, k, ts, write_mode='overwrite')
-        # ds.apply_filter(filter_to_apply=results_filt, reader=reader, writer=writer)
 
     # Filter check
-    sanity_filter = (date_fin == 0)
-    print(np.sum(sanity_filter))
+    # sanity_filter = (date_fin == 0)
+    # print(np.sum(sanity_filter))
 
     # Creating clean mechanism
     reader_mec = out_test['mechanism'].data
@@ -81,59 +78,53 @@ with Session() as s:
     reader_ftmec = out_test['mechanism_freetext'].data
     s_reader_ftmec = s.get(out_test['mechanism_freetext'])
 
-    # pcr_standard_answers = ds.get_numeric_writer(out_test, 'pcr_standard_answers', 'bool', ts)
-    # pcr_strong_inferred = ds.get_numeric_writer(out_test, 'pcr_strong_inferred', 'bool', ts)
-    # pcr_weak_inferred = ds.get_numeric_writer(out_test, 'pcr_weak_inferred', 'bool', ts)
-    # antibody_standard_answers = ds.get_numeric_writer(out_test, 'antibody_standard_answers', 'bool', ts)
-    # antibody_strong_inferred = ds.get_numeric_writer(out_test, 'antibody_strong_inferred', 'bool', ts)
-    # antibody_weak_inferred = ds.get_numeric_writer(out_test, 'antibody_weak_inferred', 'bool', ts)
-    pcr_standard_answers = out_test.create_numeric('pcr_standard_answers', 'bool')
-    pcr_strong_inferred = out_test.create_numeric('pcr_strong_inferred', 'bool')
-    pcr_weak_inferred = out_test.create_numeric('pcr_weak_inferred', 'bool')
-    antibody_standard_answers = out_test.create_numeric('antibody_standard_answers', 'bool')
-    antibody_strong_inferred = out_test.create_numeric('antibody_strong_inferred', 'bool')
-    antibody_weak_inferred = out_test.create_numeric('antibody_weak_inferred', 'bool')
+    # pcr_standard_answers = out_test.create_numeric('pcr_standard_answers', 'bool')
+    # pcr_strong_inferred = out_test.create_numeric('pcr_strong_inferred', 'bool')
+    # pcr_weak_inferred = out_test.create_numeric('pcr_weak_inferred', 'bool')
+    # antibody_standard_answers = out_test.create_numeric('antibody_standard_answers', 'bool')
+    # antibody_strong_inferred = out_test.create_numeric('antibody_strong_inferred', 'bool')
+    # antibody_weak_inferred = out_test.create_numeric('antibody_weak_inferred', 'bool')
+    #
+    # t_pids = s.get(out_test['patient_id'])
+    # with utils.Timer('getting test mechanism filter for pcr and antibody', new_line=True):
+    #     pcr_standard_answers = np.zeros(len(t_pids), dtype=np.bool)
+    #     pcr_strong_inferred = np.zeros(len(t_pids), dtype=np.bool)
+    #     pcr_weak_inferred = np.zeros(len(t_pids), dtype=np.bool)
+    #     antibody_standard_answers = np.zeros(len(t_pids), dtype=np.bool)
+    #     antibody_strong_inferred = np.zeros(len(t_pids), dtype=np.bool)
+    #     antibody_weak_inferred = np.zeros(len(t_pids), dtype=np.bool)
+    #
+    # test_type_from_mechanism_v1(ds, s_reader_mec, s_reader_ftmec,
+    #                             pcr_standard_answers, pcr_strong_inferred, pcr_weak_inferred,
+    #                             antibody_standard_answers, antibody_strong_inferred, antibody_weak_inferred)
+    test_type_from_mechanism_v2(ds, out_test)
 
-    t_pids = s.get(out_test['patient_id'])
-    with utils.Timer('getting test mechanism filter for pcr and antibody', new_line=True):
-        pcr_standard_answers = np.zeros(len(t_pids), dtype=np.bool)
-        pcr_strong_inferred = np.zeros(len(t_pids), dtype=np.bool)
-        pcr_weak_inferred = np.zeros(len(t_pids), dtype=np.bool)
-        antibody_standard_answers = np.zeros(len(t_pids), dtype=np.bool)
-        antibody_strong_inferred = np.zeros(len(t_pids), dtype=np.bool)
-        antibody_weak_inferred = np.zeros(len(t_pids), dtype=np.bool)
-
-    test_type_from_mechanism_v1(ds, s_reader_mec, s_reader_ftmec,
-                                pcr_standard_answers, pcr_strong_inferred, pcr_weak_inferred,
-                                antibody_standard_answers, antibody_strong_inferred, antibody_weak_inferred)
-
-    reader_pcr_sa = s.get(out_test['pcr_standard_answers'])
-    reader_pcr_si = s.get(out_test['pcr_strong_inferred'])
-    reader_pcr_wi = s.get(out_test['pcr_weak_inferred'])
-
-    pcr_standard = pcr_strong_inferred + pcr_standard_answers + pcr_weak_inferred
-    pcr_standard = np.where(pcr_standard > 0, np.ones_like(pcr_standard), np.zeros_like(pcr_standard))
-
-    #writer = ds.get_numeric_writer(out_test, 'pcr_standard', dtype='bool', timestamp=ts, writemode='overwrite')
-    writer = out_test.create_numeric('pcr_standard', 'bool')
-    writer.data.write(pcr_standard)
+    # reader_pcr_sa = s.get(out_test['pcr_standard_answers'])
+    # reader_pcr_si = s.get(out_test['pcr_strong_inferred'])
+    # reader_pcr_wi = s.get(out_test['pcr_weak_inferred'])
+    #
+    # pcr_standard = pcr_strong_inferred + pcr_standard_answers + pcr_weak_inferred
+    # pcr_standard = np.where(pcr_standard > 0, np.ones_like(pcr_standard), np.zeros_like(pcr_standard))
+    #
+    # #writer = ds.get_numeric_writer(out_test, 'pcr_standard', dtype='bool', timestamp=ts, writemode='overwrite')
+    # writer = out_test.create_numeric('pcr_standard', 'bool')
+    # writer.data.write(pcr_standard)
+    pcr_standard_summarize(s, out_test)
 
     out_test_fin = output.create_dataframe('tests_fin')
     writers_dict = {}
-    for k in ('patient_id', 'date_effective_test', 'result', 'pcr_standard', 'converted_test'):
-        if k == 'converted_test':
-            values = np.zeros(len(out_test_fin['patient_id'].data), dtype='bool')
-            #writers_dict[k] = ds.get_numeric_writer(out_test_fin, k, timestamp=ts, dtype='bool',
-                                                    #writemode='overwrite')
-            writers_dict[k] = out_test_fin.create_numeric(k, 'bool')
-        else:
-            values = out_test[k].data[:]
-            if k == 'result':
-                values -= 3
-            #writers_dict[k] = reader.get_writer(out_test_fin, k, ts, write_mode='overwrite')
-            writers_dict[k] = out_test[k].create_like(out_test_fin, k)
-            print(len(values), k)
-        writers_dict[k].data.write(values)
+    # other fields
+    for k in ('patient_id', 'date_effective_test', 'result', 'pcr_standard'):
+        values = out_test[k].data[:]
+        if k == 'result':
+            values -= 3
+        writers_dict[k] = out_test[k].create_like(out_test_fin, k, ts).data
+        print(len(values), k)
+        writers_dict[k].write_part(values)
+    # converted_test
+    values = np.zeros(len(out_test_fin['patient_id'].data), dtype='bool')
+    writers_dict['converted_test'] = out_test_fin.create_numeric('converted_test', 'bool', timestamp=ts).data
+    writers_dict['converted_test'].write_part(values)
 
     # Taking care of the old test
     src_asmt = source['assessments']
@@ -157,38 +148,28 @@ with Session() as s:
     sel_maxtcp_ind = ds.apply_filter(filter_to_apply=filt_tl, reader=max_tcp_ind)
 
     # Define usable assessments with correct test based on previous filter on indices
-    if 'usable_asmt_tests' not in output.keys():
-        usable_asmt_tests = output.create_group('usable_asmt_tests')
-    else:
-        usable_asmt_tests = output['usable_asmt_tests']
+
+    usable_asmt_tests = output.create_group('usable_asmt_tests')
+    # ====
+    # usable_asmt_tests 1 patients w/ multiple test and first ok
+    # ====
     for k in ('id', 'patient_id', 'created_at', 'had_covid_test'):
         src_asmt[k].create_like(usable_asmt_tests, k)
         src_asmt[k].apply_index(sel_max_ind, target=usable_asmt_tests[k])
         print(usable_asmt_tests[k].data[0])
-        # reader = ds.get_reader(src_asmt[k])
-        # writer = reader.get_writer(usable_asmt_tests, k, ts, write_mode='overwrite')
-        # ds.apply_indices(sel_max_ind, reader=reader, writer=writer)
-        # print(ds.get_reader(usable_asmt_tests[k])[0])
 
     src_asmt['created_at'].create_like(usable_asmt_tests, 'eff_result_time')
     src_asmt['created_at'].apply_index(sel_maxtcp_ind, target=usable_asmt_tests['eff_result_time'])
-    # reader = ds.get_reader(src_asmt['created_at'])
-    # writer = reader.get_writer(usable_asmt_tests, 'eff_result_time', ts, write_mode='overwrite')
-    # ds.apply_indices(sel_maxtcp_ind, reader, writer)
 
     src_asmt['tested_covid_positive'].create_like(usable_asmt_tests, 'eff_result')
     src_asmt['tested_covid_positive'].apply_index(sel_maxtcp_ind, target=usable_asmt_tests['eff_result'])
-    # reader = ds.get_reader(src_asmt['tested_covid_positive'])
-    # writer = reader.get_writer(usable_asmt_tests, 'eff_result', ts, write_mode='overwrite')
-    # ds.apply_indices(sel_maxtcp_ind, reader, writer)
 
-    for k in ('tested_covid_positive',):
-        src_asmt[k].create_like(usable_asmt_tests, k)
-        src_asmt[k].apply_index(sel_max_tcp, target=usable_asmt_tests[k])
-        # reader = ds.get_reader(src_asmt[k])
-        # writer = reader.get_writer(usable_asmt_tests, k, ts, write_mode='overwrite')
-        # ds.apply_indices(sel_max_tcp, reader, writer)
+    src_asmt['tested_covid_positive'].create_like(usable_asmt_tests, 'tested_covid_positive')
+    src_asmt['tested_covid_positive'].apply_index(sel_max_tcp, target=usable_asmt_tests['tested_covid_positive'])
 
+    # ====
+    # usable_asmt_tests 2 patients w/ multiple test and first ok ; and only positive
+    # ====
     # Making sure that the test is definite (either positive or negative)
     filt_deftest = usable_asmt_tests['tested_covid_positive'].data[:] > 1
     # print(len(ds.get_reader(usable_asmt_tests['patient_id'])))
@@ -196,10 +177,10 @@ with Session() as s:
             'id', 'patient_id', 'created_at', 'had_covid_test', 'tested_covid_positive', 'eff_result_time',
             'eff_result'):
         usable_asmt_tests[k].apply_filter(filt_deftest, in_place=True)
-        # reader = ds.get_reader(usable_asmt_tests[k])
-        # writer = reader.get_writer(usable_asmt_tests, k, ts, write_mode='overwrite')
-        # ds.apply_filter(filt_deftest, reader, writer)
 
+    # ====
+    # usable_asmt_tests 3  delta_days_test date_final_test pcr_standard
+    # ====
     # Getting difference between created at (max of hct date) and max of test result (eff_result_time)
     reader_hct = usable_asmt_tests['created_at'].data[:]
     reader_tcp = usable_asmt_tests['eff_result_time'].data[:]
@@ -220,6 +201,9 @@ with Session() as s:
     writer = usable_asmt_tests.create_numeric('pcr_standard', 'int')
     writer.data.write(pcr_standard)
 
+    # ====
+    # out_test_fin copy from usable_asmt_tests
+    # ====
     list_init = ('patient_id', 'date_final_test', 'tested_covid_positive', 'pcr_standard')
     list_final = ('patient_id', 'date_effective_test', 'result', 'pcr_standard')
     # Join
@@ -232,20 +216,20 @@ with Session() as s:
         print(len(values), f)
         writers_dict[f].data.write(values)
     writers_dict['converted_test'].data.write(np.ones(len(usable_asmt_tests['patient_id'].data), dtype='bool'))
+
     converted_fin = out_test_fin['converted_test'].data
     result_fin = out_test_fin['result'].data[:]
     pat_id_fin = out_test_fin['patient_id'].data[:]
     filt_pos = result_fin >= 0
 
+    # ====
+    # out_pos 1 copy from out_test_fin with valid result >=0
+    # ====
     out_pos = output.create_dataframe('out_pos')
     for k in out_test_fin.keys():
         out_test_fin[k].create_like(out_pos, k)
         out_test_fin[k].apply_filter(filt_pos, target=out_pos[k])
         print(k, len(out_test_fin[k].data), len(filt_pos))
-        # reader = ds.get_reader(out_test_fin[k])
-        # writer = reader.get_writer(out_pos, k, ts)
-        # ds.apply_filter(filt_pos, reader, writer)
-    #pat_pos = ds.get_reader(out_pos['patient_id'])
 
     dataset.copy(out_pos, output, 'out_pos_copy')
     # dict_test = {}
@@ -257,6 +241,9 @@ with Session() as s:
     # del df_test
 
     #pat_id_all = src_asmt['patient_id'].data[:]
+    # ====
+    # out_pos 2 filter patient that has assessment
+    # ====
 
     with utils.Timer('Mapping index asmt to pos only'):
         test2pat = prst.foreign_key_is_in_primary_key(out_pos['patient_id'].data[:],
@@ -291,6 +278,10 @@ with Session() as s:
         # writer = reader.get_writer(out_pos, k,ts,write_mode='overwrite')
         # ds.apply_filter(test2pat, reader,writer)
 
+    # ====
+    # summarize the symptoms TODO use exeteracovid.algorithm
+    # ====
+
     sum_symp = np.zeros(len(out_pos['patient_id'].data))
     for k in list_symptoms:
         values = out_pos[k].data[:]
@@ -304,6 +295,9 @@ with Session() as s:
     # writer = ds.get_numeric_writer(out_pos, 'sum_symp', dtype='int', timestamp=ts, writemode='overwrite')
     # writer.write(sum_symp)
 
+    # ====
+    # filter the symptoms
+    # ====
     symp_flat = np.where(out_pos['sum_symp'].data[:] < 1, 0, 1)
     spans = out_pos['patient_id'].get_spans()
     # Get the first index at which the hct field is maximum
@@ -321,10 +315,16 @@ with Session() as s:
     filt_sel = prst.foreign_key_is_in_primary_key(pat_sel, out_pos['patient_id'].data[:])
 
     spans_asymp = ds.apply_filter(filt_asymptomatic, first_symp_ind)
+    # ====
+    # out_pos re index asymptomatic
+    # ====
     pat_asymp = out_pos['patient_id'].apply_index(spans_asymp)
     #pat_asymp = ds.apply_indices(spans_asymp, ds.get_reader(out_pos['patient_id']))
     filt_pata = prst.foreign_key_is_in_primary_key(pat_asymp.data[:], out_pos['patient_id'].data[:])
 
+    # ====
+    # out_pos_hs 1 not healthy first
+    # ====
     out_pos_hs = output.create_dataframe('out_pos_hs')
     for k in list_symptoms + ['created_at', 'patient_id', 'sum_symp', 'country_code', 'location', 'treatment',
                               'updated_at']:
@@ -345,6 +345,9 @@ with Session() as s:
     # del df_final
 
     print('out_pos_asymp')
+    # ====
+    # out_pos_as 1 out_pos filter asymptomatic
+    # ====
     out_pos_as = output.create_dataframe('out_pos_asymp')
     for k in list_symptoms + ['created_at', 'patient_id', 'sum_symp', 'country_code', 'location',
                               'treatment']:
