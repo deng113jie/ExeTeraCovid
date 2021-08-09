@@ -10,7 +10,7 @@
 # limitations under the License.
 
 import numpy as np
-
+import exetera.core.dataframe as edf
 
 class ValidateCovidTestResultsFacVersion1PreHCTFix:
     """
@@ -236,3 +236,25 @@ class ValidateCovidTestResultsFacVersion2:
                     value = self.tcps[j]
                     print('na' if value == '' else value, end='')
                 print('')
+
+def match_assessment(test_df, assessment_df, dest_df, gap, positive_only=False):
+    """
+    Mapping the test with a previous assessment record.
+
+    :param test_df: The tests dataframe.
+    :param assessment_df: The assessment dataframe.
+    :param dest_df: The destination dataframe to write the result to.
+    :param gap: Limit the number of days assessment prior the tests.
+    :param positive_only: Filter tests with positive result only.
+    :return: The result dataframe.
+    """
+    # merge tests with assessment
+    edf.merge(test_df, assessment_df, dest=dest_df, left_on='patient_id', right_on='patient_id', how='inner')
+    # created_at_l test date, created_at_r assessment date
+    flt = dest_df['created_at_r'] <= dest_df['created_at_l']  # assessment happens before test
+    flt &= dest_df['created_at_r'] + gap * 3600 * 24 >= dest_df['created_at_l']  # asmt < test < asmt + gap
+    if positive_only:
+        flt &= dest_df['result'] == 4
+    dest_df.apply_filter(flt)
+    return dest_df
+
