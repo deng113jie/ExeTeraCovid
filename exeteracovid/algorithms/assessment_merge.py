@@ -38,7 +38,7 @@ class MergeAssessmentRows:
         :param existing_field_indices: The indices of fields to process.
         :param custom_field_aggregators: The custom specified function to perform when aggregate the content.
         :param source_filter: The filter to work on source dataset.
-        :param resulting_filter: The field to store the result filter. 
+        :param resulting_filter: The field to store the result filter.
         """
         print(created_fields.keys())
         self.rfindex = 0

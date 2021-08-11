@@ -33,3 +33,4 @@ def covid_test_date_v1(session: Session,
     exact.create_like(dest_test_table, dest_field_name).data.write(test_date)
     session.create_numeric(dest_test_table, dest_field_flags_name,
                            'bool').data.write(test_date_valid)
+

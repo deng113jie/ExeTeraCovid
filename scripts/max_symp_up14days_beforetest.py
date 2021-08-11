@@ -2,17 +2,23 @@ import numpy as np
 import csv
 from datetime import datetime, timezone
 
+from exetera.core import session
 from exetera.core.persistence import DataStore
 from exetera.core import utils
 from exetera.core import persistence as prst
-from exetera.processing.test_type_from_mechanism import test_type_from_mechanism_v2
-from exetera.core import session
-from exeteracovid.algorithms.covid_test import unique_tests
+from exeteracovid.algorithms.test_type_from_mechanism import test_type_from_mechanism_v1_standard_input
+from exeteracovid.algorithms.covid_test import unique_tests_v1
 from exeteracovid.algorithms.covid_test_date import covid_test_date_v1
-from exeteracovid.algorithms.test_type_from_mechanism import pcr_standard_summarize
+from exeteracovid.algorithms.test_type_from_mechanism import pcr_standard_summarize_v1
+
+list_symptoms = ['fatigue', 'abdominal_pain', 'chest_pain', 'sore_throat', 'shortness_of_breath',
+                     'skipped_meals', 'loss_of_smell', 'unusual_muscle_pains', 'headache', 'hoarse_voice', 'delirium',
+                     'diarrhoea',
+                     'fever', 'persistent_cough', 'dizzy_light_headed', 'eye_soreness', 'red_welts_on_face_or_lips',
+                     'blisters_on_feet']
 
 
-def date_filtering(spans_test, spans_asmt, dict_max):
+def date_filtering(spans_test, spans_asmt, dict_max, out_test_fin, out_asmt_init, first_healthy):
     """
     Compare the test date verse the assessment date.
     """
@@ -53,36 +59,25 @@ def date_filtering(spans_test, spans_asmt, dict_max):
                     dict_max[f].append(np.max(values_pos))
                 count_ta += 1
     print(count_ta)
-    return filt_date, filt_testwithasmt
+    return filt_date, filt_testwithasmt, dict_max
 
 
-def save_df_to_csv(df, csv_name, chunk=200000):  # chunk=100k ~ 20M/s
+def save_df_to_csv(df, csv_name, fields, chunk=200000):  # chunk=100k ~ 20M/s
     with open(csv_name, 'w', newline='') as csvfile:
-        columns = list(df.keys())
+        columns = list(fields)
         writer = csv.writer(csvfile)
         writer.writerow(columns)
         field1 = columns[0]
         for current_row in range(0, len(df[field1].data), chunk):
             torow = current_row + chunk if current_row + chunk < len(df[field1].data) else len(df[field1].data)
             batch = list()
-            for k in df.keys():
+            for k in fields:
                 batch.append(df[k].data[current_row:torow])
             writer.writerows(list(zip(*batch)))
 
 
-ds = DataStore()
-ts = str(datetime.now(timezone.utc))
+def max_symp_up14days_beforetest(s, source, output):
 
-list_symptoms = ['fatigue', 'abdominal_pain', 'chest_pain', 'sore_throat', 'shortness_of_breath',
-                 'skipped_meals', 'loss_of_smell', 'unusual_muscle_pains', 'headache', 'hoarse_voice', 'delirium',
-                 'diarrhoea',
-                 'fever', 'persistent_cough', 'dizzy_light_headed', 'eye_soreness', 'red_welts_on_face_or_lips',
-                 'blisters_on_feet']
-
-with session.Session() as s:
-    source = s.open_dataset('/home/jd21/data/asmt-test.h5', 'r', 'source')
-    # source = s.open_dataset('/mnt/data/jd21/data/March31.hdf5', 'r', 'source')
-    output = s.open_dataset('/home/jd21/data/out.hdf5', 'w', 'output')
     ds = DataStore()
     ts = str(datetime.now(timezone.utc))
     src_pat = source['patients']
@@ -106,7 +101,7 @@ with session.Session() as s:
 
     # filter unique tests
     print('creating filter')
-    clean_filt = unique_tests(src_test, fields=('patient_id', 'result', 'mechanism', 'date_taken_specific',
+    clean_filt = unique_tests_v1(src_test, fields=('patient_id', 'result', 'mechanism', 'date_taken_specific',
                                                 'date_taken_between_start', 'created_at'))
     out_test = output.create_dataframe('tests')
     src_test.apply_filter(clean_filt, ddf=out_test)
@@ -120,8 +115,8 @@ with session.Session() as s:
     out_test.apply_filter(results_filt)
 
     # Creating clean mechanism
-    test_type_from_mechanism_v2(ds, out_test)
-    pcr_standard_summarize(s, out_test)
+    test_type_from_mechanism_v1_standard_input(ds, out_test)
+    pcr_standard_summarize_v1(s, out_test)
 
     # tests_fin
     out_test_fin = output.create_dataframe('tests_fin')
@@ -160,12 +155,16 @@ with session.Session() as s:
     # Get the index at which test is maximum and for which that hct is possible
     max_tcp_ind = ds.apply_spans_index_of_max(spans, src_asmt['tested_covid_positive'].data[:])
     # filt_max_test = ds.apply_indices(filt_tl, max_tcp )
-    sel_max_tcp = ds.apply_indices(filt_tl, firstnz_tcp_ind)
+
+    sel_max_tcp = ds.apply_indices(filt_tl, max_tcp_ind)
+
     sel_maxtcp_ind = ds.apply_filter(filter_to_apply=filt_tl, reader=max_tcp_ind)
 
-    # TODO compare sel_max_ind w/ sel_maxtcp_ind
     # Define usable assessments with correct test based on previous filter on indices
     usable_asmt_tests = output.create_dataframe('usable_asmt_tests')
+    # ====
+    # 2 assessments patients w/ multiple test and first ok
+    # ====
     for k in ('id', 'patient_id', 'created_at', 'had_covid_test'):
         fld = src_asmt[k].create_like(usable_asmt_tests, k, ts)
         src_asmt[k].apply_index(sel_max_ind, target=fld)
@@ -317,7 +316,7 @@ with session.Session() as s:
     print(np.sum(first_healthy), ' number of start healthy')
 
     with utils.Timer('pruning to assessments that are 14 days before test'):
-        filt_date, filt_testwithasmt = date_filtering(spans_test, spans_asmt, dict_max)
+        filt_date, filt_testwithasmt, dict_max = date_filtering(spans_test, spans_asmt, dict_max, out_test_fin, out_asmt_init, first_healthy)
 
     # ====
     # out_asmt_filt 1 copy from out_asmt_init & assessments 14 days before test
@@ -335,13 +334,14 @@ with session.Session() as s:
     # ====
     idx = out_test_filt.create_numeric('r', 'int')  # the index field when write to csv
     idx.data.write(list(range(len(dict_max['healthy_first']))))
-    for k in list_symptoms + ['healthy_first']:
+    for k in list_symptoms:
         # writer = ds.get_numeric_writer(out_test_filt, k, timestamp=ts, dtype='int64')
         if k in out_test_filt.keys():
             writer = out_test_filt[k].data
         else:
             writer = out_test_filt.create_numeric(k, 'int64', timestamp=ts).data
         writer.write(np.asarray(dict_max[k]))
+    out_test_filt.create_numeric('healthy_first', 'bool', timestamp=ts).data.write(dict_max['healthy_first'])
 
     # ====
     # out_test_filt 2 copy from out_test_fin2 & assessments 14 days before test
@@ -352,8 +352,9 @@ with session.Session() as s:
         # ds.apply_filter(filt_testwithasmt.astype('bool'), reader, writer)
         fld = out_test_fin2[k].create_like(out_test_filt, k, ts)
         out_test_fin2[k].apply_filter(filt_testwithasmt.astype('bool'), target=fld)
-
-    save_df_to_csv(out_test_filt, '/home/jd21/data/MaxBefTestForLongAll.csv')
+    out_fields = ['r'] + list_symptoms + ['healthy_first', 'converted_test', 'date_effective_test', 'patient_id',
+                                  'pcr_standard', 'result']
+    save_df_to_csv(out_test_filt, '/home/jd21/data/MaxBefTestForLongAll.csv', out_fields)
 
     # filter information on patients
     # ====
@@ -363,10 +364,20 @@ with session.Session() as s:
     out_pat = output.create_dataframe('patients_characteristics')
     pat_id = src_pat['id'].data
     filt_patfin = prst.foreign_key_is_in_primary_key(out_test_filt['patient_id'].data[:], pat_id[:])
-    list_fields = ('id', 'year_of_birth', 'gender', 'healthcare_professional')
+    list_fields = ['id', 'year_of_birth', 'gender', 'healthcare_professional']
     idx = out_pat.create_numeric('r', 'int')  # the index field when write to csv
     idx.data.write(list(range(np.sum(filt_patfin == True))))  # mind == can not be replaced by is
+
     for k in list_fields:
         fld = src_pat[k].create_like(out_pat, k, ts)
         src_pat[k].apply_filter(filt_patfin, target=fld)
-    save_df_to_csv(out_pat, '/home/jd21/data/PatBefTestForLongAll.csv')
+    save_df_to_csv(out_pat, '/home/jd21/data/PatBefTestForLongAll.csv', ['r'] + list_fields)
+
+
+if __name__ == "__main__":
+    with session.Session() as s:
+        source = s.open_dataset('/home/jd21/data/post.h5', 'r', 'source')
+        output = s.open_dataset('/home/jd21/data/out2.hdf5', 'w', 'output')
+        max_symp_up14days_beforetest(s, source, output)
+
+

@@ -237,7 +237,7 @@ class ValidateCovidTestResultsFacVersion2:
                     print('na' if value == '' else value, end='')
                 print('')
 
-def match_assessment(test_df, assessment_df, dest_df, gap, positive_only=False):
+def match_assessment_v1(test_df, assessment_df, dest_df, gap, positive_only=False):
     """
     Mapping the test with a previous assessment record.
 
@@ -258,3 +258,86 @@ def match_assessment(test_df, assessment_df, dest_df, gap, positive_only=False):
     dest_df.apply_filter(flt)
     return dest_df
 
+
+#TODO use numba
+def unique_tests_v1(src_test,
+                   fields=('patient_id', 'result', 'pcr_standard', 'date_effective_test')):
+    """"
+    Group tests per patient. Use unique dates & mechanism per patient.
+
+    :param src_test: The tests dataframe.
+    :return: A numpy array of boolean identifying unique rows.
+    """
+    pat_id = src_test['patient_id']
+    print('creating spans')
+    spans = pat_id.get_spans()
+    span_start = spans[0:-1]
+    span_end = spans[1:]
+    clean_filt = np.zeros(len(pat_id), dtype='bool')
+    dict_fields = {}
+    print(clean_filt.sum())
+    for f in fields:
+        print(f)
+        dict_fields[f] = src_test[f].data[:]
+    dict_fields['date_eff'] = np.where(dict_fields['date_taken_specific'] > 0,
+                                       dict_fields['date_taken_specific'],
+                                       dict_fields['date_taken_between_start'])
+
+    print('dict done')
+    date_eff = dict_fields['date_eff']
+    mechanism = dict_fields['mechanism']
+    pat_tmp = dict_fields['patient_id']
+    count_pat = 0
+    print('starting loop')
+    for i in range(len(span_start)):
+        i_s = span_start[i]
+        i_e = span_end[i]
+
+        if i_e - i_s == 1:
+            clean_filt[i_s] = 1
+            count_pat += 1
+            # print(np.sum(clean_filt), 'from unique')
+        else:  # found unique date & mechanism
+            num_pat = len(np.unique(pat_tmp[i_s:i_e]))
+            if num_pat > 1:
+                print('number of patid', num_pat)
+            possible_dates = np.unique(date_eff[i_s:i_e])
+            possible_mechanisms = np.unique(mechanism[i_s:i_e])
+            current = 1
+            for d in possible_dates:
+                for m in possible_mechanisms:
+                    found = False
+                    # print(d,m)
+                    for j in reversed(range(i_s, i_e)):
+                        # print(i_s, d, m, date_eff[j], mechanism[j])
+                        if found is True:  # TODO dead code
+                            clean_filt[j] = 0
+                            continue
+                        if date_eff[j] == d and mechanism[j] == m:
+                            found = True
+                            # print(d,m)
+                            clean_filt[j] = 1
+                            break
+                    # print(np.sum(clean_filt))
+            count_pat += 1
+    print(count_pat)
+    return clean_filt
+
+def multiple_tests_start_with_negative_v1(s, src_asmt):
+    """
+
+    :param s: The session instance.
+    :param src_asmt: The assessment dataframe.
+    :return: The filter indicates patient that has multiple tests with first negative and following positive tests.
+    """
+    # Remap had_covid_test to 0/1 2 to binary 0,1
+    tcp_flat = np.where(src_asmt['tested_covid_positive'].data[:] < 1, 0, 1)
+    spans = src_asmt['patient_id'].get_spans()
+    # Get the first index at which the hct field is maximum
+    firstnz_tcp_ind = s.apply_spans_index_of_max(spans, tcp_flat)
+    # Get the index of first element of patient_id when sorted
+    first_hct_ind = spans[:-1]
+    filt_tl = first_hct_ind != firstnz_tcp_ind
+    sel_max_ind = s.apply_filter(filter_to_apply=filt_tl, reader=firstnz_tcp_ind)
+
+    return sel_max_ind
