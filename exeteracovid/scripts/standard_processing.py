@@ -40,6 +40,12 @@ parser.add_argument('-t', '--temp', required=True,
 parser.add_argument('-d', '--daily', action='store_true',
                     help='If set, generate daily assessments from assessments')
 
+parser.add_argument('-a', '--algorithm_version', required=False,
+                    default='2',
+                    help="The version number for the processing pipeline. Use version '1' if you "
+                         "need to generate daily assessments. We recommend version '2' otherwise, "
+                         "which is the default")
+
 args = parser.parse_args()
 
 if 'dev' in exetera.__version__:
@@ -54,9 +60,14 @@ flags = set()
 if args.daily is True:
     flags.add('daily')
 print(exetera.__version__)
-# with h5py.File(args.input, 'r') as ds:
-#     with h5py.File(args.output, 'w') as ts:
-#         postprocess.postprocess(ds, ts, timestamp, flags)
 
-with Session() as s:
-    postprocess.new_postprocess(s, args.input, args.temp, args.output, flags)
+if args.algorithm_version == '1':
+    with Session() as s:
+        ds = s.open_dataset(args.input, 'r', 'ds')
+        ts = s.open_dataset(args.output, 'w', 'ts')
+        postprocess.postprocess_v1(s, ds, ts, timestamp, flags)
+elif args.algorithm_version == '2':
+    if args.daily is True:
+        print("-d/--daily is not supported in version 2 of the standard processing pipeline")
+    with Session() as s:
+        postprocess.postprocess_v2(s, args.input, args.temp, args.output, flags)
