@@ -325,19 +325,26 @@ def unique_tests_v1(src_test,
 
 def multiple_tests_start_with_negative_v1(s, src_asmt):
     """
+    Filter out the patients who had multiple assessments and start with healthy.
 
     :param s: The session instance.
     :param src_asmt: The assessment dataframe.
     :return: The filter indicates patient that has multiple tests with first negative and following positive tests.
     """
     # Remap had_covid_test to 0/1 2 to binary 0,1
-    tcp_flat = np.where(src_asmt['tested_covid_positive'].data[:] < 1, 0, 1)
+    test_positive = np.where(src_asmt['tested_covid_positive'].data[:] < 1, 0, 1)
     spans = src_asmt['patient_id'].get_spans()
-    # Get the first index at which the hct field is maximum
-    firstnz_tcp_ind = s.apply_spans_index_of_max(spans, tcp_flat)
+    # Get the first index at which the hct field is maximum  group by
+    firstnz_tcp_ind = s.apply_spans_index_of_max(spans, test_positive)  # positive if multiple tests
     # Get the index of first element of patient_id when sorted
     first_hct_ind = spans[:-1]
-    filt_tl = first_hct_ind != firstnz_tcp_ind
-    sel_max_ind = s.apply_filter(filter_to_apply=filt_tl, reader=firstnz_tcp_ind)
+    filt_tl = first_hct_ind != firstnz_tcp_ind  # COND1 has multiple tests w/ first negative and later positive
+    # Get the indices for which hct changed value (indicating that test happened after the first input)
+    sel_max_ind = firstnz_tcp_ind[filt_tl]
 
-    return sel_max_ind
+    # Get the index at which test is maximum and for which that hct is possible
+    max_tcp_ind = s.apply_spans_index_of_max(spans, src_asmt['tested_covid_positive'].data[:])
+    sel_max_tcp = max_tcp_ind[filt_tl]
+    # sel_maxtcp_ind = max_tcp_ind[filt_tl]  # was used in previous version
+
+    return sel_max_ind, sel_max_tcp

@@ -7,7 +7,7 @@ from exetera.core.persistence import DataStore
 from exetera.core import utils
 from exetera.core import persistence as prst
 from exeteracovid.algorithms.test_type_from_mechanism import test_type_from_mechanism_v1_standard_input
-from exeteracovid.algorithms.covid_test import unique_tests_v1
+from exeteracovid.algorithms.covid_test import unique_tests_v1, multiple_tests_start_with_negative_v1
 from exeteracovid.algorithms.covid_test_date import covid_test_date_v1
 from exeteracovid.algorithms.test_type_from_mechanism import pcr_standard_summarize_v1
 
@@ -142,23 +142,23 @@ def max_symp_up14days_beforetest(s, source, output):
     print(src_asmt.keys())
 
     # Remap had_covid_test to 0/1 2 to binary 0,1
-    test_positive = np.where(src_asmt['tested_covid_positive'].data[:] < 1, 0, 1)
-    spans = src_asmt['patient_id'].get_spans()
-    # Get the first index at which the hct field is maximum  group by
-    firstnz_tcp_ind = ds.apply_spans_index_of_max(spans, test_positive)  # positive if multiple tests
-    # Get the index of first element of patient_id when sorted
-    first_hct_ind = spans[:-1]
-    filt_tl = first_hct_ind != firstnz_tcp_ind  # COND1 has multiple tests w/ first negative and later positive
-    # Get the indices for which hct changed value (indicating that test happened after the first input)
-    sel_max_ind = ds.apply_filter(filter_to_apply=filt_tl, reader=firstnz_tcp_ind)
-
-    # Get the index at which test is maximum and for which that hct is possible
-    max_tcp_ind = ds.apply_spans_index_of_max(spans, src_asmt['tested_covid_positive'].data[:])
-    # filt_max_test = ds.apply_indices(filt_tl, max_tcp )
-
-    sel_max_tcp = ds.apply_indices(filt_tl, max_tcp_ind)
-
-    sel_maxtcp_ind = ds.apply_filter(filter_to_apply=filt_tl, reader=max_tcp_ind)
+    # test_positive = np.where(src_asmt['tested_covid_positive'].data[:] < 1, 0, 1)
+    # spans = src_asmt['patient_id'].get_spans()
+    # # Get the first index at which the hct field is maximum  group by
+    # firstnz_tcp_ind = ds.apply_spans_index_of_max(spans, test_positive)  # positive if multiple tests
+    # # Get the index of first element of patient_id when sorted
+    # first_hct_ind = spans[:-1]
+    # filt_tl = first_hct_ind != firstnz_tcp_ind  # COND1 has multiple tests w/ first negative and later positive
+    # # Get the indices for which hct changed value (indicating that test happened after the first input)
+    # sel_max_ind = ds.apply_filter(filter_to_apply=filt_tl, reader=firstnz_tcp_ind)
+    #
+    # # Get the index at which test is maximum and for which that hct is possible
+    # max_tcp_ind = ds.apply_spans_index_of_max(spans, src_asmt['tested_covid_positive'].data[:])
+    #
+    # sel_max_tcp = ds.apply_indices(filt_tl, max_tcp_ind)
+    #
+    # sel_maxtcp_ind = ds.apply_filter(filter_to_apply=filt_tl, reader=max_tcp_ind)
+    sel_max_ind, sel_max_tcp = multiple_tests_start_with_negative_v1(s, src_asmt)
 
     # Define usable assessments with correct test based on previous filter on indices
     usable_asmt_tests = output.create_dataframe('usable_asmt_tests')
@@ -170,10 +170,12 @@ def max_symp_up14days_beforetest(s, source, output):
         src_asmt[k].apply_index(sel_max_ind, target=fld)
 
     fld = src_asmt['created_at'].create_like(usable_asmt_tests, 'eff_result_time', ts)
-    src_asmt['created_at'].apply_index(sel_maxtcp_ind, target=fld)
+    #src_asmt['created_at'].apply_index(sel_maxtcp_ind, target=fld)
+    src_asmt['created_at'].apply_index(sel_max_tcp, target=fld)
 
     fld = src_asmt['tested_covid_positive'].create_like(usable_asmt_tests, 'eff_result', ts)
-    src_asmt['tested_covid_positive'].apply_index(sel_maxtcp_ind, target=fld)
+    #src_asmt['tested_covid_positive'].apply_index(sel_maxtcp_ind, target=fld)
+    src_asmt['tested_covid_positive'].apply_index(sel_max_tcp, target=fld)
 
     fld = src_asmt['tested_covid_positive'].create_like(usable_asmt_tests, 'tested_covid_positive', ts)
     src_asmt['tested_covid_positive'].apply_index(sel_max_tcp, target=fld)
@@ -270,11 +272,12 @@ def max_symp_up14days_beforetest(s, source, output):
     for k in out_test_fin.keys():
         out_test_fin[k].apply_filter(filt_asmt2, in_place=True)
 
-    list_patid = out_test_fin['patient_id'].data
-    list_patcreate = out_test_fin['date_effective_test'].data
+    list_patid = out_test_fin['patient_id'].data[:]
+    list_patcreate = out_test_fin['date_effective_test'].data[:]
     ind_pat = np.arange(len(list_patid), dtype=np.int64)
     with utils.Timer('sorting_patients'):
-        ind_pat = ds.dataset_sort(readers=(list_patid, list_patcreate), index=ind_pat)
+        #ind_pat = ds.dataset_sort(readers=(list_patid, list_patcreate), index=ind_pat)
+        ind_pat = s.dataset_sort_index(sort_indices=(list_patid, list_patcreate), index=ind_pat)
 
     # ====
     # out_test_fin2 1 copy from out_test_fin and re-order
