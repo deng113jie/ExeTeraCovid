@@ -431,8 +431,8 @@ def postprocess_v2(s: Session,
         flags = dict()
 
     src_dataset = s.open_dataset(src_file, 'r', 'src')
-    dest_dataset = s.open_dataset(temp_file, 'w', 'dest')
-    temp_dataset = s.open_dataset(dest_file, 'w', 'temp')
+    temp_dataset = s.open_dataset(temp_file, 'w', 'temp')
+    dest_dataset = s.open_dataset(dest_file, 'w', 'dest')
 
     has_patients = 'patients' in src_dataset
     has_assessments = 'assessments' in src_dataset
@@ -496,7 +496,7 @@ def postprocess_v2(s: Session,
 
         # finally, filter out the duplicate patient entries
         with utils.Timer("Calculate duplicates"):
-            duplicate_filter = persistence.filter_duplicate_fields(src_patients['id'])
+            duplicate_filter = persistence.filter_duplicate_fields(temp_patients['id'])
 
         with utils.Timer("Filter patient duplicates and write to the destination dataset"):
             temp_patients.apply_filter(duplicate_filter, dest_patients)
