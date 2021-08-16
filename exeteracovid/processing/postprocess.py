@@ -424,6 +424,7 @@ def postprocess_v1(s: Session,
             s.merge_left(left_on=s.get(patients_dest['id']).data[:], right_on=d_distinct_pids,
                          right_fields=(d_pid_counts,), right_writers=(p_diet_counts,))
 
+# =============================================================================
 
 def postprocess_v2(s: Session,
                    src_file, temp_file, dest_file, timestamp=None, flags=None):
@@ -557,9 +558,14 @@ def postprocess_v2(s: Session,
                                    dest_tests.create_timestamp("effective_test_date"),
                                    dest_tests.create_numeric('effective_test_date_valid', 'bool'))
 
-        with utils.Timer("Calculate sorted index for tests"):
-            test_indices = s.dataset_sort_index((src_tests['patient_id'],
-                                                 dest_tests['effective_test_date']))
+        if 'sort_tests_by_effective_date' in flags:
+            with utils.Timer("Calculate sorted index for tests using effective date"):
+                test_indices = s.dataset_sort_index((src_tests['patient_id'],
+                                                     dest_tests['effective_test_date']))
+        else:
+            with utils.Timer("Calculate sorted index for tests"):
+                test_indices = s.dataset_sort_index((src_tests['patient_id'],
+                                                     dest_tests['created_at']))
 
         with utils.Timer("Applying indices to test fields"):
             dest_tests['effective_test_date'].apply_index(test_indices, in_place=True)
