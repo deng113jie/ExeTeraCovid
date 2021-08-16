@@ -568,7 +568,7 @@ def postprocess_v2(s: Session,
         else:
             with utils.Timer("Calculate sorted index for tests"):
                 test_indices = s.dataset_sort_index((src_tests['patient_id'],
-                                                     dest_tests['created_at']))
+                                                     src_tests['created_at']))
 
         with utils.Timer("Applying indices to test fields"):
             dest_tests['effective_test_date'].apply_index(test_indices, in_place=True)
