@@ -429,7 +429,7 @@ def postprocess_v1(s: Session,
 def postprocess_v2(s: Session,
                    src_file, temp_file, dest_file, timestamp=None, flags=None):
     if flags is None:
-        flags = dict()
+        flags = set()
 
     src_dataset = s.open_dataset(src_file, 'r', 'src')
     temp_dataset = s.open_dataset(temp_file, 'w', 'temp')
@@ -442,6 +442,8 @@ def postprocess_v2(s: Session,
     has_vaccine_symptoms = 'vaccine_symptoms' in src_dataset
     has_vaccine_hesitancy = 'vaccine_hesitancy' in src_dataset
     has_mental_health = 'mental_health' in src_dataset
+
+    print("flags:", flags)
 
 
     # sort and generate fields based on patients
@@ -511,6 +513,7 @@ def postprocess_v2(s: Session,
 
         if 'up_to_assessments' in flags:
             keep_first = 10000000
+            print("keeping first {} assessments".format(keep_first))
             for k in s_assessments.keys():
                 with utils.Timer("Trimming {}".format(k)):
                     s_assessments[k].create_like(d_assessments, k)

@@ -70,4 +70,4 @@ elif args.algorithm_version == '2':
     if args.daily is True:
         print("-d/--daily is not supported in version 2 of the standard processing pipeline")
     with Session() as s:
-        postprocess.postprocess_v2(s, args.input, args.temp, args.output, flags)
+        postprocess.postprocess_v2(s, args.input, args.temp, args.output, flags=flags)
