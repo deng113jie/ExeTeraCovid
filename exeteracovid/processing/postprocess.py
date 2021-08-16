@@ -442,6 +442,7 @@ def postprocess_v2(s: Session,
     has_vaccine_symptoms = 'vaccine_symptoms' in src_dataset
     has_vaccine_hesitancy = 'vaccine_hesitancy' in src_dataset
     has_mental_health = 'mental_health' in src_dataset
+    has_long_covid = 'long_covid' in src_dataset
 
     print("flags:", flags)
 
@@ -628,6 +629,16 @@ def postprocess_v2(s: Session,
             s.sort_on(src_mental_health, dest_mental_health, ('patient_id', 'created_at'))
 
 
+    # sort and generate fields based on long covid
+
+    if has_long_covid:
+        src_long_covid = src_dataset['long_covid']
+        dest_long_covid = dest_dataset.create_dataframe('long_covid')
+
+        with utils.Timer("Sorting long_covid DataFrame"):
+            s.sort_on(src_long_covid, dest_long_covid, ('patient_id', 'created_at'))
+
+
     # Phase 2: merging and aggregating fields
 
 
@@ -765,3 +776,26 @@ def postprocess_v2(s: Session,
                             left_fields=[], right_fields=('mental_health_count',),
                             how='left')
             d_patients.rename('valid_r', 'has_mental_health_entries')
+
+
+    # generate long covid measures at the patient level
+
+    if has_patients and has_long_covid:
+        d_patients = dest_dataset['patients']
+        d_long_covid = dest_dataset['long_covid']
+        print("long_covid:", d_long_covid.keys())
+        t_agg_long_covid = temp_dataset.create_dataframe('aggregated_long_covid')
+
+        pid_spans = s.get_spans(d_long_covid['patient_id'])
+
+        t_agg_long_covid['patient_id'] = \
+            d_long_covid['patient_id'].apply_spans_first(pid_spans)
+        t_agg_long_covid.create_numeric('long_covid_count', 'int32')
+        s.apply_spans_count(pid_spans, t_agg_long_covid['long_covid_count'])
+
+        with utils.Timer("merging aggregated long covid data to patient data"):
+            dataframe.merge(d_patients, t_agg_long_covid, d_patients,
+                            left_on=('id',), right_on=('patient_id',),
+                            left_fields=[], right_fields=('long_covid_count',),
+                            how='left')
+            d_patients.rename('valid_r', 'has_long_covid_entries')
