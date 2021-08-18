@@ -109,7 +109,7 @@ def pcr_standard_summarize_v1(session, test_df):
     write.data.write(pcr_standard)
 
 
-def test_type_from_mechanism_v1_standard_input(datastore, test_df):
+def test_type_from_mechanism_v1_standard_input(s, test_df):
     mechanism = test_df['mechanism']
     mechanism_free = test_df['mechanism_freetext']
     pcr_standard_answers = test_df.create_numeric('pcr_standard_answers', 'bool').data
@@ -136,7 +136,7 @@ def test_type_from_mechanism_v1_standard_input(datastore, test_df):
     pcr_weak = ('self test', 'self admin', 'home test', 'home admin', 'self', 'home', 'post', 'i did it', 'drive', 'hemma', 'private')
 
 
-    r_mechanism = val.raw_array_from_parameter(datastore, 'mechanism', mechanism)
+    r_mechanism = val.raw_array_from_parameter(s, 'mechanism', mechanism)
 
     f_pcr_cat = np.isin(r_mechanism, (1, 2, 3, 4))
     if isinstance(pcr_standard_answers, np.ndarray):
@@ -149,8 +149,8 @@ def test_type_from_mechanism_v1_standard_input(datastore, test_df):
         antibody_standard_answers[:] = f_atb_cat
     else:
         antibody_standard_answers.write(f_atb_cat)
-
-    r_mechanism_free = val.raw_array_from_parameter(datastore, 'mechanism_free', mechanism_free)
+    # todo problem w/ changing ds to s, return what for indexing string field
+    r_mechanism_free = val.raw_array_from_parameter(s, 'mechanism_free', mechanism_free)
 
     f_pcr_strong = np.zeros(len(r_mechanism), dtype=np.bool)
     for p in pcr_strong:

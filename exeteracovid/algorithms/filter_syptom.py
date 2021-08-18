@@ -1,5 +1,7 @@
 import numpy as np
 
+import exetera.core.persistence as prst
+
 def at_least_one_symptom_v1(assessment_df):
     """
     Filter the rows with at least one symptom reported.
@@ -87,3 +89,37 @@ def filter_symptoms_v1(assessment_df, symp_dict):
                 else:
                     filter |= assessment_df[symptom].data[:] <= 1
     return filter
+
+def filter_asymp_and_firstnz_v1(s, out_pos):
+    """
+    Filter symptom and return two index: 1) the patients without any symptom recorded; and 2) the patients have a first
+    full-zero symptom and then recorded some symptom.
+
+    :param s: The exetera Session instance.
+    :param out_post: The dataframe contains sum_symp, patient_id fields.
+    :return: spans_asymp -- the patients without any symptom;
+             filt_sel --  patients with a first full-zero and then some symptom.
+    """
+    symp_flat = np.where(out_pos['sum_symp'].data[:] < 1, 0, 1)
+    spans = out_pos['patient_id'].get_spans()
+    print('Number definitie positive is', len(spans) - 1)
+
+    # Get the first index at which the hct field is maximum
+    firstnz_symp_ind = s.apply_spans_index_of_max(spans, symp_flat)
+    max_symp_check = symp_flat[firstnz_symp_ind]
+    # Get the index of first element of patient_id when sorted
+
+    filt_asymptomatic = max_symp_check == 0
+    print('Number asymptomatic is ', len(spans) - 1 - np.sum(max_symp_check), np.sum(filt_asymptomatic))
+
+    first_symp_ind = spans[:-1]
+    not_healthy_first = first_symp_ind != firstnz_symp_ind
+    print('Number not healthy first is ', len(spans) - 1 - np.sum(not_healthy_first))
+
+    spans_valid = s.apply_filter(not_healthy_first, first_symp_ind)
+    #pat_sel = s.apply_indices(spans_valid, out_pos['patient_id'].data[:])
+    pat_sel = out_pos['patient_id'].apply_index(spans_valid)
+    filt_sel = prst.foreign_key_is_in_primary_key(pat_sel.data[:], out_pos['patient_id'].data[:])
+
+    spans_asymp = s.apply_filter(filt_asymptomatic, first_symp_ind)
+    return spans_asymp, filt_sel
