@@ -357,7 +357,7 @@ def max_symp_up14days_beforetest(s, source, output):
         out_test_fin2[k].apply_filter(filt_testwithasmt.astype('bool'), target=fld)
     out_fields = ['r'] + list_symptoms + ['healthy_first', 'converted_test', 'date_effective_test', 'patient_id',
                                   'pcr_standard', 'result']
-    save_df_to_csv(out_test_filt, '/home/jd21/data/MaxBefTestForLongAll.csv', out_fields)
+    save_df_to_csv(out_test_filt, 'MaxBefTestForLongAll.csv', out_fields)
 
     # filter information on patients
     # ====
@@ -374,13 +374,15 @@ def max_symp_up14days_beforetest(s, source, output):
     for k in list_fields:
         fld = src_pat[k].create_like(out_pat, k, ts)
         src_pat[k].apply_filter(filt_patfin, target=fld)
-    save_df_to_csv(out_pat, '/home/jd21/data/PatBefTestForLongAll.csv', ['r'] + list_fields)
+    save_df_to_csv(out_pat, 'PatBefTestForLongAll.csv', ['r'] + list_fields)
 
 
 if __name__ == "__main__":
+    src_file = '/home/jd21/data/post.h5'
+    dst_file = '/home/jd21/data/out2.hdf5'
     with session.Session() as s:
-        source = s.open_dataset('/home/jd21/data/post.h5', 'r', 'source')
-        output = s.open_dataset('/home/jd21/data/out2.hdf5', 'w', 'output')
+        source = s.open_dataset(src_file, 'r', 'source')
+        output = s.open_dataset(dst_file, 'w', 'output')
         max_symp_up14days_beforetest(s, source, output)
 
 

@@ -39,7 +39,7 @@ def merging_results(s, source, output):
                      'shortness_of_breath', 'skin_burning', 'skipped_meals', 'sneezing',
                      'sore_throat', 'swollen_glands', 'typical_hayfever', 'unusual_muscle_pains']
 
-    path = '/home/jd21/data'
+    #path = '/home/jd21/data'
     #ds = DataStore()
     ts = str(datetime.now(timezone.utc))
 
@@ -389,8 +389,11 @@ def merging_results(s, source, output):
 
 
 if __name__ == "__main__":
+    source_file = '/home/jd21/data/post.h5'
+    dst_file = '/home/jd21/data/May17_processed_mrslt.hdf5'
+
     with Session() as s:
-        source = s.open_dataset('/home/jd21/data/post.h5', 'r', 'src')
-        output = s.open_dataset('/home/jd21/data/May17_processed_mrslt.hdf5', 'w', 'out')
+        source = s.open_dataset(source_file, 'r', 'src')
+        output = s.open_dataset(dst_file, 'w', 'out')
         merging_results(s, source, output)
 
