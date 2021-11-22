@@ -98,7 +98,7 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         print(datetime.now(),' remove ssptm duplicates.')
         p_vacc_uniq = dst.create_dataframe('p_vacc_uniq')
         p_vacc_ssptm.drop_duplicates(by=['id', 'sequence', 'date_taken_specific', 'brand', 'created_at_l', 'updated_at_l', 'created_at_r', 'updated_at_r'], ddf=p_vacc_uniq)
-        print(datetime.now(), len(unique(p_vacc_uniq['id'].data)), ' children with systematic symptoms found.')
+        print(datetime.now(), len(np.unique(p_vacc_uniq['id'].data)), ' children with systematic symptoms found.')
 
         #output to csv
         save_df_to_csv(p_vacc_uniq,'vacc_children.csv', list(p_vacc_uniq.keys()))
