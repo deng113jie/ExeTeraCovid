@@ -62,7 +62,7 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         src_patients.apply_filter(filter, ddf=d_patients)
         del d_patients['created_at']
         del d_patients['updated_at']
-        print(len(np.unique(d_patients['id'].data[:])), ' number of unique children found.')
+        print(datetime.now(), len(np.unique(d_patients['id'].data[:])), ' number of unique children found.')
 
         p_vacc = dst.create_dataframe('p_vacc')
         df.merge(d_patients, src['vaccine_doses'], dest=p_vacc, how='inner', left_on='id', right_on='patient_id',
@@ -72,7 +72,7 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         filter &= p_vacc['sequence'].data[:] == 1
         p_vacc.apply_filter(filter)
 
-        print(len(np.unique(p_vacc['id'].data)), ' vaccined children found.')
+        print(datetime.now(), len(np.unique(p_vacc['id'].data)), ' vaccined children found.')
 
         p_vacc_lsptm = dst.create_dataframe('p_vacc_lsptm')
         df.merge(p_vacc, src['vaccine_symptoms'], dest=p_vacc_lsptm, how='inner', left_on='id', right_on='patient_id',
@@ -82,22 +82,29 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
                  & (p_vacc_lsptm['date_taken_specific'].data[:] > p_vacc_lsptm['created_at'].data[:] - 8*24*3600)
         p_vacc_lsptm.apply_filter(filter)
 
-        print(len(np.unique(p_vacc_lsptm['id'].data)), ' children with local symptoms found.')
+        # remove duplicates
+        p_vacc_lsptm_q = dst.create_dataframe('p_vacc_lsptm_q')
+        bykeys = list(p_vacc_lsptm.keys())
+        bykeys.remove('id')
+        p_vacc_lsptm.drop_duplicates(by=['id'] + bykeys, ddf=p_vacc_lsptm_q)
+        print(datetime.now(), len(np.unique(p_vacc_lsptm_q['id'].data)), ' children with local symptoms found.')
 
         p_vacc_ssptm = dst.create_dataframe('p_vacc_ssptm')
-        df.merge(p_vacc_lsptm, src['assessments'], dest=p_vacc_ssptm, how='inner', left_on='id', right_on='patient_id',
+        df.merge(p_vacc_lsptm_q, src['assessments'], dest=p_vacc_ssptm, how='inner', left_on='id', right_on='patient_id',
                  right_fields=['created_at', 'updated_at']+list_symptoms)
         filter = (p_vacc_ssptm['date_taken_specific'].data[:] < p_vacc_ssptm['created_at_r'].data[:]) \
                  & (p_vacc_ssptm['date_taken_specific'].data[:] > p_vacc_ssptm['created_at_r'].data[:] - 8*24*3600)
         p_vacc_ssptm.apply_filter(filter)
 
+        #remove duplicates
+        print(datetime.now(),' remove ssptm duplicates.')
         p_vacc_uniq = dst.create_dataframe('p_vacc_ssptm_uniq')
         bykeys = list(p_vacc_ssptm.keys())
         bykeys.remove('id')
         p_vacc_ssptm.drop_duplicates(by=['id']+bykeys, ddf=p_vacc_uniq)
+        print(datetime.now(), len(unique(p_vacc_uniq['id'].data)), ' children with systematic symptoms found.')
 
-        print(len(unique(p_vacc_uniq['id'].data)), ' children with systematic symptoms found.')
-
+        #output to csv
         save_df_to_csv(p_vacc_uniq,'vacc_children.csv', list(p_vacc_uniq.keys()))
 
 if __name__=="__main__":
