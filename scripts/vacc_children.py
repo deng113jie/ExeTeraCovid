@@ -84,7 +84,7 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         filter = (p_vacc_ssptm['date_taken_specific'].data[:] < p_vacc_ssptm['created_at_r'].data[:]) \
                  & (p_vacc_ssptm['date_taken_specific'].data[:] > p_vacc_ssptm['created_at_r'].data[:] - 8*24*3600)
         p_vacc_ssptm.apply_filter(filter)
-        print(len(p_vacc_ssptm['id_l'].data), ' number of systematic symptoms found.')
+        print(len(p_vacc_ssptm['id'].data), ' number of systematic symptoms found.')
 
         save_df_to_csv(p_vacc_ssptm,'vacc_children.csv', list(p_vacc_ssptm.keys()))
 
