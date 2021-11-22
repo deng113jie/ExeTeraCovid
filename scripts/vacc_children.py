@@ -81,6 +81,8 @@ def get_vacc_in_childern_dup(src_filename, dst_filename, vacc_date):
         filter = (p_vacc_lsptm['date_taken_specific'].data[:] < p_vacc_lsptm['created_at'].data[:]) \
                  & (p_vacc_lsptm['date_taken_specific'].data[:] > p_vacc_lsptm['created_at'].data[:] - 8*24*3600)
         p_vacc_lsptm.apply_filter(filter)
+        print(datetime.now(), len(np.unique(p_vacc_lsptm['id'].data)), ' children with ',
+              len(p_vacc_lsptm['id'].data), ' local records found.')
 
         p_vacc_ssptm = dst.create_dataframe('p_vacc_ssptm')
         df.merge(p_vacc_lsptm, src['assessments'], dest=p_vacc_ssptm, how='inner', left_on='id', right_on='patient_id',
@@ -88,6 +90,8 @@ def get_vacc_in_childern_dup(src_filename, dst_filename, vacc_date):
         filter = (p_vacc_ssptm['date_taken_specific'].data[:] < p_vacc_ssptm['created_at_r'].data[:]) \
                  & (p_vacc_ssptm['date_taken_specific'].data[:] > p_vacc_ssptm['created_at_r'].data[:] - 8*24*3600)
         p_vacc_ssptm.apply_filter(filter)
+        print(datetime.now(), len(np.unique(p_vacc_ssptm['id'].data)), ' children with ',
+              len(p_vacc_ssptm['id'].data), ' systemic records found.')
 
         #output to csv
         save_df_to_csv(p_vacc_ssptm,'vacc_children.csv', list(p_vacc_ssptm.keys()))
