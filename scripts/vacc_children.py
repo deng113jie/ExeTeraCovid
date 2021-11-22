@@ -31,32 +31,31 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         print(len(d_patients['id'].data), ' number of children found.')
 
         p_vacc = dst.create_dataframe('p_vacc')
-        df.merge(d_patients, src['vaccine_doses'], dest=p_vacc, how='inner', left_on='id', right_on='patient_id')
-        filter = p_vacc['created_at_r'].data[:] > datetime.strptime(vacc_date, '%Y%m%d').timestamp()  # vaccine date
+        df.merge(d_patients, src['vaccine_doses'], dest=p_vacc, how='inner', left_on='id', right_on='patient_id',
+                 right_fields=['created_at', 'updated_at', 'sequence', 'date_taken_specific', 'brand'])
+        filter = p_vacc['date_taken_specific'].data[:] > datetime.strptime(vacc_date, '%Y%m%d').timestamp()  # vaccine date
         filter &= p_vacc['brand'].data[:] == 2
         filter &= p_vacc['sequence'].data[:] == 1
         p_vacc.apply_filter(filter)
-        p_vacc['vaccine_date'] = p_vacc['created_at_r']
-        del p_vacc['created_at_r']
+
         print(len(p_vacc['id'].data), ' number of vaccined children found.')
 
         p_vacc_lsptm = dst.create_dataframe('p_vacc_lsptm')
-        df.merge(p_vacc, src['vaccine_symptoms'], dest=p_vacc_lsptm, how='inner', left_on='id', right_on='patient_id')
-        filter = (p_vacc_lsptm['vaccine_date'].data[:] < p_vacc_lsptm['created_at'].data[:]) \
-                 & (p_vacc_lsptm['vaccine_date'].data[:] > p_vacc_lsptm['created_at'].data[:] - 8*24*3600)
+        df.merge(p_vacc, src['vaccine_symptoms'], dest=p_vacc_lsptm, how='inner', left_on='id', right_on='patient_id',
+                 right_fields=['created_at', 'updated_at', 'pain', 'redness', 'swelling', 'swollen_armpit_glands', 'warmth',
+                               'itch', 'tenderness', 'bruising', 'other'])
+        filter = (p_vacc_lsptm['date_taken_specific'].data[:] < p_vacc_lsptm['created_at_l'].data[:]) \
+                 & (p_vacc_lsptm['date_taken_specific'].data[:] > p_vacc_lsptm['created_at_l'].data[:] - 8*24*3600)
         p_vacc_lsptm.apply_filter(filter)
-        p_vacc_lsptm['lsymptom_date'] = p_vacc_lsptm['created_at']
-        del p_vacc_lsptm['created_at']
+
         print(len(p_vacc_lsptm['id'].data), ' number of local symptoms found.')
 
         p_vacc_ssptm = dst.create_dataframe('p_vacc_ssptm')
         df.merge(p_vacc_lsptm, src['assessments'], dest=p_vacc_ssptm, how='inner', left_on='id', right_on='patient_id')
-        filter = (p_vacc_ssptm['vaccine_date'].data[:] < p_vacc_ssptm['created_at'].data[:]) \
-                 & (p_vacc_ssptm['vaccine_date'].data[:] > p_vacc_ssptm['created_at'].data[:] - 8*24*3600)
+        filter = (p_vacc_ssptm['date_taken_specific'].data[:] < p_vacc_ssptm['created_at'].data[:]) \
+                 & (p_vacc_ssptm['date_taken_specific'].data[:] > p_vacc_ssptm['created_at'].data[:] - 8*24*3600)
         p_vacc_ssptm.apply_filter(filter)
-        p_vacc_ssptm['ssymptom_date'] = p_vacc_ssptm['created_at']
-        del p_vacc_ssptm['created_at']
-        print(len(p_vacc_ssptm['id'].data), ' number of systematic symptoms found.')
+        print(len(p_vacc_ssptm['id_l'].data), ' number of systematic symptoms found.')
 
 
 
