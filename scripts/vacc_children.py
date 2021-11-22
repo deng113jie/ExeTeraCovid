@@ -11,6 +11,16 @@ import exetera.core.dataframe as df
 import exetera.core.operations as ops
 import exetera.core.fields as fld
 
+list_symptoms = ['abdominal_pain', 'altered_smell', 'blisters_on_feet', 'brain_fog',
+                     'chest_pain', 'chills_or_shivers', 'delirium', 'diarrhoea',
+                     'diarrhoea_frequency', 'dizzy_light_headed', 'ear_ringing', 'earache',
+                     'eye_soreness', 'fatigue', 'feeling_down', 'fever', 'hair_loss',
+                     'headache', 'headache_frequency', 'hoarse_voice',
+                     'irregular_heartbeat', 'loss_of_smell', 'nausea', 'persistent_cough', 'rash',
+                     'red_welts_on_face_or_lips', 'runny_nose',
+                     'shortness_of_breath', 'skin_burning', 'skipped_meals', 'sneezing',
+                     'sore_throat', 'swollen_glands', 'typical_hayfever', 'unusual_muscle_pains']
+
 def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
     """
     patient age 12-17, vaccined after 23.8.2021, proxy reorted
@@ -53,7 +63,8 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         print(len(p_vacc_lsptm['id'].data), ' number of local symptoms found.')
 
         p_vacc_ssptm = dst.create_dataframe('p_vacc_ssptm')
-        df.merge(p_vacc_lsptm, src['assessments'], dest=p_vacc_ssptm, how='inner', left_on='id', right_on='patient_id')
+        df.merge(p_vacc_lsptm, src['assessments'], dest=p_vacc_ssptm, how='inner', left_on='id', right_on='patient_id',
+                 right_fields=['created_at', 'updated_at']+list_symptoms)
         filter = (p_vacc_ssptm['date_taken_specific'].data[:] < p_vacc_ssptm['created_at_r'].data[:]) \
                  & (p_vacc_ssptm['date_taken_specific'].data[:] > p_vacc_ssptm['created_at_r'].data[:] - 8*24*3600)
         p_vacc_ssptm.apply_filter(filter)
