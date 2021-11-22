@@ -32,7 +32,7 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
 
         p_vacc = dst.create_dataframe('p_vacc')
         df.merge(d_patients, src['vaccine_doses'], dest=p_vacc, how='inner', left_on='id', right_on='patient_id')
-        filter = p_vacc['created_at_r'].data[:] > datetime.strptime(date_to, '%Y%m%d').timestamp()  # vaccine date
+        filter = p_vacc['created_at_r'].data[:] > datetime.strptime(vacc_date, '%Y%m%d').timestamp()  # vaccine date
         filter &= p_vacc['brand'].data[:] == 2
         filter &= p_vacc['sequence'].data[:] == 1
         p_vacc.apply_filter(filter)
@@ -64,7 +64,7 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
 
 
 if __name__=="__main__":
-    srcfile=''
+    srcfile='/nvme0_mounts/nvme0lv01/exetera/recent/ds_20211121_full.hdf5'
     dstfile='vacc_children.hdf5'
     get_vacc_in_childern(srcfile, dstfile, 20210823)
 
