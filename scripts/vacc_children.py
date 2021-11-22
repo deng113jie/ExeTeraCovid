@@ -84,9 +84,7 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
 
         # remove duplicates
         p_vacc_lsptm_q = dst.create_dataframe('p_vacc_lsptm_q')
-        bykeys = list(p_vacc_lsptm.keys())
-        bykeys.remove('id')
-        p_vacc_lsptm.drop_duplicates(by=['id'] + bykeys, ddf=p_vacc_lsptm_q)
+        p_vacc_lsptm.drop_duplicates(by=['id', 'sequence', 'date_taken_specific', 'brand', 'created_at', 'updated_at'] , ddf=p_vacc_lsptm_q)
         print(datetime.now(), len(np.unique(p_vacc_lsptm_q['id'].data)), ' children with local symptoms found.')
 
         p_vacc_ssptm = dst.create_dataframe('p_vacc_ssptm')
@@ -98,10 +96,8 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
 
         #remove duplicates
         print(datetime.now(),' remove ssptm duplicates.')
-        p_vacc_uniq = dst.create_dataframe('p_vacc_ssptm_uniq')
-        bykeys = list(p_vacc_ssptm.keys())
-        bykeys.remove('id')
-        p_vacc_ssptm.drop_duplicates(by=['id']+bykeys, ddf=p_vacc_uniq)
+        p_vacc_uniq = dst.create_dataframe('p_vacc_uniq')
+        p_vacc_ssptm.drop_duplicates(by=['id', 'sequence', 'date_taken_specific', 'brand', 'created_at_l', 'updated_at_l', 'created_at_r', 'updated_at_r'], ddf=p_vacc_uniq)
         print(datetime.now(), len(unique(p_vacc_uniq['id'].data)), ' children with systematic symptoms found.')
 
         #output to csv
