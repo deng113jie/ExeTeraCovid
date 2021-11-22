@@ -21,6 +21,22 @@ list_symptoms = ['abdominal_pain', 'altered_smell', 'blisters_on_feet', 'brain_f
                      'shortness_of_breath', 'skin_burning', 'skipped_meals', 'sneezing',
                      'sore_throat', 'swollen_glands', 'typical_hayfever', 'unusual_muscle_pains']
 
+def save_df_to_csv(df, csv_name, fields, chunk=200000):  # chunk=100k ~ 20M/s
+    with open(csv_name, 'w', newline='') as csvfile:
+        columns = list(fields)
+        writer = csv.writer(csvfile)
+        writer.writerow(columns)
+        field1 = columns[0]
+        for current_row in range(0, len(df[field1].data), chunk):
+            torow = current_row + chunk if current_row + chunk < len(df[field1].data) else len(df[field1].data)
+            batch = list()
+            for k in fields:
+                if isinstance(df[k], fld.TimestampField):
+                    batch.append([get_ts_str(d) for d in df[k].data[current_row:torow]])
+                else:
+                    batch.append(df[k].data[current_row:torow])
+            writer.writerows(list(zip(*batch)))
+
 def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
     """
     patient age 12-17, vaccined after 23.8.2021, proxy reorted
@@ -70,13 +86,7 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         p_vacc_ssptm.apply_filter(filter)
         print(len(p_vacc_ssptm['id_l'].data), ' number of systematic symptoms found.')
 
-
-
-
-
-
-
-
+        save_df_to_csv(p_vacc_ssptm,'vacc_children.csv', list(p_vacc_ssptm.keys()))
 
 if __name__=="__main__":
     srcfile='/nvme0_mounts/nvme0lv01/exetera/recent/ds_20211121_full.hdf5'
