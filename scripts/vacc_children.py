@@ -66,5 +66,5 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
 if __name__=="__main__":
     srcfile='/nvme0_mounts/nvme0lv01/exetera/recent/ds_20211121_full.hdf5'
     dstfile='vacc_children.hdf5'
-    get_vacc_in_childern(srcfile, dstfile, 20210823)
+    get_vacc_in_childern(srcfile, dstfile, '20210823')
 
