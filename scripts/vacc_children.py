@@ -21,6 +21,12 @@ list_symptoms = ['abdominal_pain', 'altered_smell', 'blisters_on_feet', 'brain_f
                      'shortness_of_breath', 'skin_burning', 'skipped_meals', 'sneezing',
                      'sore_throat', 'swollen_glands', 'typical_hayfever', 'unusual_muscle_pains']
 
+def get_ts_str(d):
+    if d > 0:
+        return datetime.fromtimestamp(d).strftime("%Y-%m-%d")
+    else:
+        return '0'
+
 def save_df_to_csv(df, csv_name, fields, chunk=200000):  # chunk=100k ~ 20M/s
     with open(csv_name, 'w', newline='') as csvfile:
         columns = list(fields)
