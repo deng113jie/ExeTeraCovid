@@ -36,7 +36,8 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         filter &= p_vacc['brand'].data[:] == 2
         filter &= p_vacc['sequence'].data[:] == 1
         p_vacc.apply_filter(filter)
-        p_vacc['created_at_r'] = p_vacc['vaccine_date']
+        p_vacc['vaccine_date'] = p_vacc['created_at_r']
+        del p_vacc['created_at_r']
         print(len(p_vacc['id'].data), ' number of vaccined children found.')
 
         p_vacc_lsptm = dst.create_dataframe('p_vacc_lsptm')
@@ -44,7 +45,8 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         filter = (p_vacc_lsptm['vaccine_date'].data[:] < p_vacc_lsptm['created_at'].data[:]) \
                  & (p_vacc_lsptm['vaccine_date'].data[:] > p_vacc_lsptm['created_at'].data[:] - 8*24*3600)
         p_vacc_lsptm.apply_filter(filter)
-        p_vacc_lsptm['created_at'] = p_vacc_lsptm['lsymptom_date']
+        p_vacc_lsptm['lsymptom_date'] = p_vacc_lsptm['created_at']
+        del p_vacc_lsptm['created_at']
         print(len(p_vacc_lsptm['id'].data), ' number of local symptoms found.')
 
         p_vacc_ssptm = dst.create_dataframe('p_vacc_ssptm')
@@ -52,7 +54,8 @@ def get_vacc_in_childern(src_filename, dst_filename, vacc_date):
         filter = (p_vacc_ssptm['vaccine_date'].data[:] < p_vacc_ssptm['created_at'].data[:]) \
                  & (p_vacc_ssptm['vaccine_date'].data[:] > p_vacc_ssptm['created_at'].data[:] - 8*24*3600)
         p_vacc_ssptm.apply_filter(filter)
-        p_vacc_ssptm['created_at'] = p_vacc_ssptm['ssymptom_date']
+        p_vacc_ssptm['ssymptom_date'] = p_vacc_ssptm['created_at']
+        del p_vacc_ssptm['created_at']
         print(len(p_vacc_ssptm['id'].data), ' number of systematic symptoms found.')
 
 
