@@ -21,7 +21,7 @@ list_symptoms = ['abdominal_pain', 'altered_smell', 'blisters_on_feet', 'brain_f
                      'shortness_of_breath', 'skin_burning', 'skipped_meals', 'sneezing',
                      'sore_throat', 'swollen_glands', 'typical_hayfever', 'unusual_muscle_pains']
 
-patient_fields = ['id', 'country_code', 'bmi', 'ethnicity', 'gender',
+patient_fields = ['id', 'age', 'country_code', 'bmi', 'ethnicity', 'gender',
                   'is_pregnant', 'is_smoker', 'lsoa11cd', 'reported_by_another',
                   'has_asthma',   'has_eczema','has_hayfever',
                   'has_cancer', 'has_diabetes', 'has_heart_disease', 'has_kidney_disease', 'has_lung_disease', 'does_chemotherapy', 'takes_immunosuppressants']
