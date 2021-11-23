@@ -162,13 +162,13 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
 
         #one local symptom a day
         lsymp_doy = [datetime.fromtimestamp(i).timetuple().tm_yday for i in p_vacc_lsptm['created_at'].data[:]]
-        p_vacc_lsptm.create_numeric('lsymp_doy', np.int32).data.write(lsymp_doy)
+        p_vacc_lsptm.create_numeric('lsymp_doy', 'int32').data.write(lsymp_doy)
         p_vacc_lsptm.sort_values(by=['id', 'lsymp_doy'])
 
         lsymptom_max = np.zeros(len(p_vacc_lsptm['pain'].data), np.int16)
         for f in ['pain', 'redness', 'swelling', 'swollen_armpit_glands', 'warmth', 'itch', 'tenderness', 'bruising']:
             lsymptom_max+=p_vacc_lsptm[f].data[:]
-        p_vacc_lsptm.create_numeric('lsymp_max', np.int16).data.write(lsymptom_max)
+        p_vacc_lsptm.create_numeric('lsymp_max', 'int32').data.write(lsymptom_max)
 
         filter = np.zeros(len(p_vacc_lsptm['pain'].data), bool)
         span_data = np.asarray([p_vacc_lsptm[k].data[:] for k in ['id', 'lsymp_doy']])
@@ -194,13 +194,13 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
 
         #filter one symptom per day
         ssymp_doy = [datetime.fromtimestamp(i).timetuple().tm_yday for i in p_vacc_ssptm['created_at_r'].data[:]]
-        p_vacc_ssptm.create_numeric('ssymp_doy', np.int32).data.write(ssymp_doy)
+        p_vacc_ssptm.create_numeric('ssymp_doy', 'int32').data.write(ssymp_doy)
         p_vacc_ssptm.sort_values(by=['id', 'ssymp_doy'])
 
         ssymptom_max = np.zeros(len(p_vacc_lsptm['abdominal_pain'].data), np.int16)
         for f in  list_symptoms:
             ssymptom_max += np.where(p_vacc_ssptm[f].data[:]>1,1,0)
-        p_vacc_ssptm.create_numeric('ssymp_max', np.int16).data.write(ssymptom_max)
+        p_vacc_ssptm.create_numeric('ssymp_max', 'int32').data.write(ssymptom_max)
 
         filter = np.zeros(len(p_vacc_ssptm['abdominal_pain'].data), bool)
         span_data = np.asarray([p_vacc_ssptm[k].data[:] for k in ['id', 'ssymp_doy']])
