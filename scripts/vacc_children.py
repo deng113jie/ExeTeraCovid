@@ -124,7 +124,7 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         print(datetime.now(), len(np.unique(d_patients['id'].data[:])), ' number of unique children found.')
 
         #nr_comorbidities
-        nr_comorbidities = np.zeros(len(p_with_tests['has_diabetes'].data))
+        nr_comorbidities = np.zeros(len(d_patients['has_diabetes'].data))
         for k in ['has_diabetes', 'has_heart_disease', 'has_lung_disease', 'does_chemotherapy', 'has_kidney_disease',
                   'has_cancer', 'takes_immunosuppressants']:
             nr_comorbidities += np.where(d_patients[k].data[:] == 2, 1, 0)
