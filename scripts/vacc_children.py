@@ -190,7 +190,7 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         df.move(p_vacc_ssptm['id_l'],p_vacc_ssptm, 'id')
         df.move(p_vacc_ssptm['id_r'], p_vacc_ssptm, 'ssymptom_id')
         print(datetime.now(), len(np.unique(p_vacc_ssptm['id'].data)), ' children with ',
-              len(np.unique(p_vacc_ssptm['lsymptom_id'].data[:])), ' systematic symptoms records found.')
+              len(np.unique(p_vacc_ssptm['ssymptom_id'].data[:])), ' systematic symptoms records found.')
 
         #filter one symptom per day
         ssymp_doy = [datetime.fromtimestamp(i).timetuple().tm_yday for i in p_vacc_ssptm['created_at_r'].data[:]]
