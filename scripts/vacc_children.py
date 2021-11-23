@@ -142,8 +142,8 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         filter &= p_vacc['brand'].data[:] == 2
         filter &= p_vacc['sequence'].data[:] == 1
         p_vacc.apply_filter(filter)
-        p_vacc['id'] = p_vacc['id_l']
-        p_vacc['vaccine_id'] = p_vacc['id_r']
+        df.move(p_vacc['id_l'], p_vacc, 'id')
+        df.move(p_vacc['id_r'], p_vacc, 'vaccine_id')
         print(datetime.now(), len(np.unique(p_vacc['id'].data)), ' children with ',
               len(np.unique(p_vacc['vaccine_id'].data[:])), ' vaccine records found.')
 
@@ -155,8 +155,8 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         filter = (p_vacc_lsptm['date_taken_specific'].data[:] < p_vacc_lsptm['created_at'].data[:]) \
                  & (p_vacc_lsptm['date_taken_specific'].data[:] > p_vacc_lsptm['created_at'].data[:] - 8*24*3600)
         p_vacc_lsptm.apply_filter(filter)
-        p_vacc_lsptm['id'] = p_vacc_lsptm['id_l']
-        p_vacc_lsptm['lsymptom_id'] = p_vacc_lsptm['id_r']
+        df.move(p_vacc_lsptm['id_l'], p_vacc_lsptm, 'id')
+        df.move(p_vacc_lsptm['id_r'], p_vacc_lsptm, 'lsymptom_id')
         print(datetime.now(), len(np.unique(p_vacc_lsptm['id'].data)), ' children with ',
               len(np.unique(p_vacc_lsptm['lsymptom_id'].data[:])), ' local symptoms records found.')
 
@@ -187,8 +187,8 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         filter = (p_vacc_ssptm['date_taken_specific'].data[:] < p_vacc_ssptm['created_at_r'].data[:]) \
                  & (p_vacc_ssptm['date_taken_specific'].data[:] > p_vacc_ssptm['created_at_r'].data[:] - 8*24*3600)
         p_vacc_ssptm.apply_filter(filter)
-        p_vacc_ssptm['id'] = p_vacc_ssptm['id_l']
-        p_vacc_ssptm['ssymptom_id'] = p_vacc_ssptm['id_r']
+        df.move(p_vacc_ssptm['id_l'],p_vacc_ssptm, 'id')
+        df.move(p_vacc_ssptm['id_r'], p_vacc_ssptm, 'ssymptom_id')
         print(datetime.now(), len(np.unique(p_vacc_ssptm['id'].data)), ' children with ',
               len(np.unique(p_vacc_ssptm['lsymptom_id'].data[:])), ' systematic symptoms records found.')
 
