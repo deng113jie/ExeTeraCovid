@@ -197,7 +197,7 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         p_vacc_ssptm.create_numeric('ssymp_doy', 'int32').data.write(ssymp_doy)
         p_vacc_ssptm.sort_values(by=['id', 'ssymp_doy'])
 
-        ssymptom_max = np.zeros(len(p_vacc_lsptm['abdominal_pain'].data), np.int16)
+        ssymptom_max = np.zeros(len(p_vacc_ssptm['abdominal_pain'].data), np.int16)
         for f in  list_symptoms:
             ssymptom_max += np.where(p_vacc_ssptm[f].data[:]>1,1,0)
         p_vacc_ssptm.create_numeric('ssymp_max', 'int32').data.write(ssymptom_max)
