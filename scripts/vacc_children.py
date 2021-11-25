@@ -72,9 +72,9 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
 
         #nr_comorbidities
         nr_comorbidities = np.zeros(len(d_patients['has_diabetes'].data))
-        for k in ['has_diabetes', 'has_heart_disease', 'has_lung_disease', 'does_chemotherapy', 'has_kidney_disease',
+        for f in ['has_diabetes', 'has_heart_disease', 'has_lung_disease', 'does_chemotherapy', 'has_kidney_disease',
                   'has_cancer', 'takes_immunosuppressants']:
-            nr_comorbidities += np.where(d_patients[k].data[:] == 2, 1, 0)
+            nr_comorbidities += np.where(d_patients[f].data[:] == 2, 1, 0)
         d_patients.create_numeric('nr_comorbidities', 'int32')
         d_patients['nr_comorbidities'].data.write(nr_comorbidities)
 
@@ -113,13 +113,13 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         p_vacc_lsptm.sort_values(by=['id', 'lsymp_doy'])
 
         filter = np.zeros(len(p_vacc_lsptm['pain'].data), bool)
-        span_data = np.asarray([p_vacc_lsptm[k].data[:] for k in ['id', 'lsymp_doy']])
+        span_data = np.asarray([p_vacc_lsptm[f].data[:] for f in ['id', 'lsymp_doy']])
         spans = ops._get_spans_for_multi_fields(span_data)
         for i in range(len(spans)-1):
             filter[spans[i]] = True
             for f in ['pain', 'redness', 'swelling', 'swollen_armpit_glands', 'warmth', 'itch', 'tenderness',
                       'bruising']:  # sum up the symptoms
-                p_vacc_lsptm[k].data[spans[i]] = 1 if 1 in  p_vacc_lsptm[k].data[spans[i]:spans[i+1]] else 0
+                p_vacc_lsptm[f].data[spans[i]] = 1 if 1 in  p_vacc_lsptm[f].data[spans[i]:spans[i+1]] else 0
 
         p_vacc_lsptm.apply_filter(filter)  # only the first record per patient per day
         print(datetime.now(), len(np.unique(p_vacc_lsptm['id'].data)), ' children with ',
@@ -141,16 +141,16 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         ssymp_doy = [datetime.fromtimestamp(i).timetuple().tm_yday for i in p_vacc_ssptm['created_at_r'].data[:]]
         p_vacc_ssptm.create_numeric('ssymp_doy', 'int32').data.write(ssymp_doy)
         p_vacc_ssptm.sort_values(by=['id', 'ssymp_doy'])
-        span_data = np.asarray([p_vacc_ssptm[k].data[:] for k in ['id', 'ssymp_doy']])
+        span_data = np.asarray([p_vacc_ssptm[f].data[:] for f in ['id', 'ssymp_doy']])
         spans = ops._get_spans_for_multi_fields(span_data)
 
         filter = np.zeros(len(p_vacc_ssptm['abdominal_pain'].data), bool)
         for i in range(len(spans) - 1):
             filter[spans[i]] = True
             for f in list_symptoms:  # sum up sumptoms to the first record
-                p_vacc_ssptm[k].data[spans[i]] = 1 if np.any(p_vacc_ssptm[k].data[spans[i]:spans[i+1]]>1) else 0
+                p_vacc_ssptm[f].data[spans[i]] = 1 if np.any(p_vacc_ssptm[f].data[spans[i]:spans[i+1]]>1) else 0
 
-        p_vacc_ssptm.apply_filter(filter)  # leave the first record
+        p_vacc_ssptm.apply_filter(filter)  # keep the first record
         print(datetime.now(), len(np.unique(p_vacc_ssptm['id'].data)), ' children with ',
               len(np.unique(p_vacc_ssptm['ssymptom_id'].data[:])), ' systematic symptoms records left.')
 
