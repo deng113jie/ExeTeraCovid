@@ -19,7 +19,7 @@ list_symptoms = ['abdominal_pain', 'altered_smell', 'blisters_on_feet', 'brain_f
                      'irregular_heartbeat', 'loss_of_smell', 'nausea', 'persistent_cough', 'rash',
                      'red_welts_on_face_or_lips', 'runny_nose',
                      'shortness_of_breath', 'skin_burning', 'skipped_meals', 'sneezing',
-                     'sore_throat', 'swollen_glands', 'typical_hayfever', 'unusual_muscle_pains']
+                     'sore_throat', 'swollen_glands', 'typical_hayfever', 'unusual_muscle_pains', 'unusual_joint_pains']
 
 patient_fields = ['id', 'year_of_birth', 'country_code', 'bmi', 'ethnicity', 'gender',
                   'is_pregnant', 'is_smoker', 'lsoa11cd', 'reported_by_another',
@@ -64,7 +64,8 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         d_patients = dst.create_dataframe('patients')
         for f in patient_fields:
             df.copy(src_patients[f], d_patients, f)
-        filter = (2021 - d_patients['year_of_birth'].data[:] >= 12) & (2021 - d_patients['year_of_birth'].data[:] <= 17)
+        d_patients.create_numeric('age', 'int32').data.write(2021 - d_patients['year_of_birth'].data[:])
+        filter = ( d_patients['age'].data[:] >= 12) & (d_patients['age'].data[:] <= 17)
         filter &=  d_patients['country_code'].data[:] == b'GB'
         filter &= d_patients['reported_by_another'].data[:] == 1
         d_patients.apply_filter(filter)
