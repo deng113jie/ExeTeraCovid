@@ -159,7 +159,7 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         save_df_to_csv(p_vacc_ssptm,'vacc_children.csv', list(p_vacc_ssptm.keys()))
 
 if __name__=="__main__":
-    srcfile='/nvme0_mounts/nvme0lv01/exetera/recent/ds_20211121_full.hdf5'
+    srcfile='/nvme0_mounts/nvme0lv01/exetera/recent/ds_20211124_full.hdf5'
     dstfile='vacc_children.hdf5'
     get_vacc_in_childern_uniq(srcfile, dstfile, '20210805')
 
