@@ -148,7 +148,7 @@ def get_vacc_in_childern_uniq(src_filename, dst_filename, vacc_date):
         for i in range(len(spans) - 1):
             filter[spans[i]] = True
             for f in list_symptoms:  # sum up sumptoms to the first record
-                p_vacc_ssptm[k].data[spans[i]] = 1 if np.any(p_vacc_ssptm[k].data[spans[i]:span[i+1]]>1) else 0
+                p_vacc_ssptm[k].data[spans[i]] = 1 if np.any(p_vacc_ssptm[k].data[spans[i]:spans[i+1]]>1) else 0
 
         p_vacc_ssptm.apply_filter(filter)  # leave the first record
         print(datetime.now(), len(np.unique(p_vacc_ssptm['id'].data)), ' children with ',
