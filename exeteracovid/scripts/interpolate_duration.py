@@ -7,11 +7,7 @@ import argparse
 import sys
 
 from exetera.core.session import Session
-
-list_symptoms = ['fatigue', 'abdominal_pain', 'chest_pain', 'sore_throat', 'shortness_of_breath',
-                 'skipped_meals', 'smell', 'unusual_muscle_pains', 'headache', 'hoarse_voice', 'delirium', 'diarrhoea',
-                 'fever', 'persistent_cough', 'dizzy_light_headed', 'eye_soreness', 'red_welts_on_face_or_lips',
-                 'blisters_on_feet', 'nausea']
+import exetera.core.dataframe as df
 
 list_symptoms = ['altered_smell', 'fatigue', 'abdominal_pain', 'chest_pain', 'sore_throat', 'shortness_of_breath',
                  'nausea',
@@ -62,14 +58,31 @@ def interpolate_date(df_train, list_symptoms=list_symptoms, col_day='interval_da
     #df_test_comb_ind = df_test_comb.set_index('interval_days')
 
     # df_test2 = df_test_comb_ind.groupby('patient_id', as_index=False).apply(lambda group: group.reindex(full_idx)).reset_index(level=0, drop=True).sort_index()
+    expanded_df = TEMPH5.create_dataframe('expanded_df')
+    df_test_comb['patient_id'].crate_like(expanded_df, 'patient_id')
+    df_test_comb['interval_days'].crate_like(expanded_df, 'interval_days')
+    for f in list_symptoms:
+        expanded_df.create_numeric(f,'float')
+
     spans = df_test_comb['patient_id'].get_spans()
     for i in range(len(spans)-1):
+        #write patient_id, idx
+        pid = df_test_comb['patient_id'].data[spans[i]]
+        expanded_df['patient_id'].data.write([pid for _ in range(len(full_idx))])
+        expanded_df['interval_days'].data.write(full_idx)
+        idx = df_test_comb['interval_days'].data[spans[i]:spans[i+1]]
         for f in list_symptoms:
             data = df_test_comb[f].data[spans[i]:spans[i+1]]
-            data = pd.Series(data).interpolate(method='linear', limit_area='inside')
-            df_test_comb[f].data[spans[i]:spans[i + 1]] = data
-        #todo drop na, rename axis, drop column, reset_index
-    return df_test_comb
+            pdseries = pd.Series(data, index=idx)
+            pdseries = pdseries.reindex(full_idx)
+            pdseries = pdseries.interpolate(method='linear', limit_area='inside')
+            expanded_df[f].data.write(pdseries.values)
+    #drop na, rename axis, drop column, reset_index
+    filter = np.isnan(expanded_df['fatigue'].data[:])
+    for f in list_symptoms:
+        filter &= np.isnan(expanded_df[f].data[:])
+    expanded_df.apply_filter(filter)
+    return expanded_df
 
 
     # def f_inter(x):
@@ -347,9 +360,9 @@ def define_gh_imp(dfg, gap_healthy=7):
     return dfg
 
 
-def date_range(dfg, c='date_update'):
-    dfg['interval'] = dfg[c] - dfg[c].min()
-    return dfg
+# def date_range(dfg, c='date_update'):
+#     dfg['interval'] = dfg[c] - dfg[c].min()
+#     return dfg
 
 
 def creating_interpolation(df_init):
@@ -369,6 +382,7 @@ def creating_interpolation(df_init):
     df_init.create_numeric('first_entry_sum', 'int16').data.write(first_entry_sum)
     df_init.create_numeric('last_entry_sum', 'int16').data.write(last_entry_sum)
     df_init.create_numeric('interval_days', 'int16').data.write(interval_days)
+    #todo first_entry_sum, last_entry_sum, interval_days not used?
 
     print('Performing interpolation')
     df_interp = interpolate_date(df_init)
@@ -570,6 +584,7 @@ def main(argv):
     if 'duration' in args.process:
         print('processing duration')
         if 'date_effective_test' not in df_proc.keys():
+            df.merge(df_proc, df_test)
 
         # if 'date_effective_test' not in df_proc.columns:
         #     df_test = pd.read_csv(args.test_file)
