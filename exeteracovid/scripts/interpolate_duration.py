@@ -101,29 +101,7 @@ def interpolate_date(df_train, list_symptoms=list_symptoms, col_day='interval_da
     # return df_interp
 
 
-def interpolate_healthy(dfg):
-    dfg['health'] = np.nan
-    dfg['health'] = np.where(dfg['sum_symp'] == 0, 1, dfg['health'])
-    dfg['health'] = np.where(dfg['sum_symp'] > 0, 0, dfg['health'])
-    dfg['health_interp'] = dfg['health'].ffill()
-    dfg['health_back'] = dfg['health'].bfill()
-    dfg['nan_healthy'] = np.where(dfg['health_interp'] == 1, np.nan, dfg['health_interp'])
-    dfg['nan_uh'] = np.where(dfg['health_interp'] == 0, np.nan, 1 - dfg['health_interp'])
-    dfg['count_healthy'] = dfg.nan_healthy.isnull().astype(int).groupby(
-        dfg.nan_healthy.notnull().astype(int).cumsum()).cumsum()
-    dfg['count_nans'] = dfg.health_status.isnull().astype(int).groupby(
-        dfg.health_status.notnull().astype(int).cumsum()).cumsum()
 
-    dfg['count_nothealthy'] = dfg.nan_uh.isnull().astype(int).groupby(
-        dfg.nan_uh.notnull().astype(int).cumsum()).cumsum()
-
-    dfg['nan_or_health'] = np.where(dfg['health'] == 0, 1, np.nan)
-    dfg['count_nans_or_health'] = dfg.nan_or_health.isnull().astype(int).groupby(
-        dfg.nan_or_health.notnull().astype(int).cumsum()).cumsum()
-
-    max_cnans = dfg['count_healthy'].max()
-    idx_cnans = dfg['count_healthy'].idxmax()
-    return dfg
 
 
 def check_succession_healthy(dfg, limit):
@@ -172,19 +150,19 @@ def check_succession_healthy(dfg, limit):
 
 def define_gh_noimp(dfg, gap_healthy=7):
     print(np.unique(dfg['patient_id']), len(dfg.index), len(np.unique(dfg.index)))
-    id_max = dfg[dfg['sum_symp'] == dfg['max_symp']]['interval_days'].min()
-    id_max2 = dfg[dfg['sum_symp'] == dfg['max_symp']]['interval_days'].max()
+    #id_max = dfg[dfg['sum_symp'] == dfg['max_symp']]['interval_days'].min()
+    #id_max2 = dfg[dfg['sum_symp'] == dfg['max_symp']]['interval_days'].max()
     id_test = dfg[(dfg['created_at'] <= dfg['date_effective_test'] + 7 * 86400)]['interval_days'].max()
     id_test_ab = dfg[dfg['created_at'] <= dfg['date_effective_test'] - 14 * 86400]['interval_days'].max()
     # Check if id_test
     dfg_before_test = dfg[dfg['interval_days'] <= id_test]
     dfg_before_test_ab = dfg[dfg['interval_days'] <= id_test_ab]
-    dfg_after_test = dfg[dfg['interval_days'] >= id_test]
-    dfg_before_max = dfg[dfg['interval_days'] <= id_max]
-    dfg_after_max = dfg[dfg['interval_days'] >= id_max2]
+    #dfg_after_test = dfg[dfg['interval_days'] >= id_test]
+    #dfg_before_max = dfg[dfg['interval_days'] <= id_max]
+    #dfg_after_max = dfg[dfg['interval_days'] >= id_max2]
     max_count_test_nh = dfg_before_test['count_nothealthy'].max()
-    max_count_bh = dfg_before_max['count_healthy'].max()
-    max_count_ah = dfg_after_max['count_healthy'].max()
+    #max_count_bh = dfg_before_max['count_healthy'].max()
+    #max_count_ah = dfg_after_max['count_healthy'].max()
     dfg['first_stuh_hg%d' % gap_healthy] = 0
     dfg['latest_first_%d' % gap_healthy] = 0
     dfg['last_stuh_hg%d' % gap_healthy] = 0
@@ -197,7 +175,7 @@ def define_gh_noimp(dfg, gap_healthy=7):
         if max_count_test_nh > 0:
             print('treating test', dfg_before_test.shape[0], max_count_test_nh)
 
-            min_count_bh = dfg_before_test['count_healthy'].min()
+            #min_count_bh = dfg_before_test['count_healthy'].min()
             dfg['first_stuh_hg%d' % gap_healthy] = dfg_before_test[dfg_before_test['count_nothealthy'] == 1][
                 'interval_days'].min()
             dfg['latest_first_%d' % gap_healthy] = dfg_before_test[dfg_before_test['count_nothealthy'] == 1][
@@ -265,7 +243,7 @@ def define_gh_noimp(dfg, gap_healthy=7):
                 dfg['last_stuh_nhg%d' % gap_healthy] = first_healthy_gap
     elif dfg_before_test_ab.shape[0] > 0 and dfg['pcr_standard'].max() == 0:
         last_count_ah = dfg['count_healthy'].tail(1).to_numpy()[0]
-        min_count_bh = dfg_before_max['count_healthy'].min()
+        #min_count_bh = dfg_before_max['count_healthy'].min()
         dfg['first_stuh_hg%d' % gap_healthy] = dfg_before_test_ab[dfg_before_test_ab['count_nothealthy'] == 1][
             'interval_days'].min()
         dfg['last_stuh_hg%d' % gap_healthy] = dfg[dfg['count_healthy'] == last_count_ah][
@@ -319,14 +297,14 @@ def define_gh_imp(dfg, gap_healthy=7):
     dfg_before_imp = dfg[dfg['interval_days'] <= id_max]
     dfg_after_imp = dfg[dfg['interval_days'] >= id_max2]
     max_count_test_nh = dfg_before_imp['count_nothealthy'].max()
-    max_count_bh = dfg_before_imp['count_healthy'].max()
-    max_count_ah = dfg_after_imp['count_healthy'].max()
+    #max_count_bh = dfg_before_imp['count_healthy'].max()
+    #max_count_ah = dfg_after_imp['count_healthy'].max()
 
     if dfg_before_imp.shape[0] > 0:
         if max_count_test_nh > 0:
             print('treating test', dfg_before_imp.shape[0], max_count_test_nh)
             last_count_ah = dfg_after_imp['count_healthy'].tail(1).to_numpy()[0]
-            min_count_bh = dfg_before_imp['count_healthy'].min()
+            #min_count_bh = dfg_before_imp['count_healthy'].min()
             dfg['first_stuh_hg%d' % gap_healthy] = dfg_before_imp[dfg_before_imp['count_nothealthy'] == 1][
                 'interval_days'].min()
             dfg['last_stuh_hg%d' % gap_healthy] = dfg_after_imp[dfg_after_imp['count_healthy'] == last_count_ah][
@@ -382,40 +360,122 @@ def creating_interpolation(df_init):
     df_init.create_numeric('first_entry_sum', 'int16').data.write(first_entry_sum)
     df_init.create_numeric('last_entry_sum', 'int16').data.write(last_entry_sum)
     df_init.create_numeric('interval_days', 'int16').data.write(interval_days)
-    #todo first_entry_sum, last_entry_sum, interval_days not used?
+    #todo confirm first_entry_sum, last_entry_sum, interval_days not used?
 
     print('Performing interpolation')
     df_interp = interpolate_date(df_init)
-    df_interp['created_interp'] = df_interp['created_at'].interpolate('linear')
+    #df_interp['created_interp'] = df_interp['created_at'].interpolate('linear') todo confirm
+    df_interp['created_interp'] = df_interp['created_at']
     return df_interp
 
 
+def interpolate_healthy(dfg):
+    dfg['health'] = np.nan
+    dfg['health'] = np.where(dfg['sum_symp'] == 0, 1, dfg['health'])
+    dfg['health'] = np.where(dfg['sum_symp'] > 0, 0, dfg['health'])
+    dfg['health_interp'] = dfg['health'].ffill()
+    dfg['health_back'] = dfg['health'].bfill()
+    dfg['nan_healthy'] = np.where(dfg['health_interp'] == 1, np.nan, dfg['health_interp'])
+    dfg['nan_uh'] = np.where(dfg['health_interp'] == 0, np.nan, 1 - dfg['health_interp'])
+    dfg['count_healthy'] = dfg.nan_healthy.isnull().astype(int).groupby(
+        dfg.nan_healthy.notnull().astype(int).cumsum()).cumsum()
+    dfg['count_nans'] = dfg.health_status.isnull().astype(int).groupby(
+        dfg.health_status.notnull().astype(int).cumsum()).cumsum()
+
+    dfg['count_nothealthy'] = dfg.nan_uh.isnull().astype(int).groupby(
+        dfg.nan_uh.notnull().astype(int).cumsum()).cumsum()
+
+    dfg['nan_or_health'] = np.where(dfg['health'] == 0, 1, np.nan)
+    dfg['count_nans_or_health'] = dfg.nan_or_health.isnull().astype(int).groupby(
+        dfg.nan_or_health.notnull().astype(int).cumsum()).cumsum()
+
+    # max_cnans = dfg['count_healthy'].max()
+    # idx_cnans = dfg['count_healthy'].idxmax()
+    return dfg
+
 def creating_duration_healthybased(df_interp, saved_name, days=[7], hi=False, force=True):
     if hi == True:
-        df_interp['health_status'] = np.nan
-        df_interp['health_status'] = np.where(df_interp['sum_symp'] > 0, 0, df_interp['health_status'])
-        df_interp['health_status'] = np.where(df_interp['sum_symp'] == 0, 1, df_interp['health_status'])
-        df_interp['max_symp'] = df_interp.groupby('patient_id')['sum_symp'].transform('max')
-        df_interp = df_interp.groupby('patient_id').apply(lambda group: interpolate_healthy(group))
+        # df_interp['health_status'] = np.nan
+        # df_interp['health_status'] = np.where(df_interp['sum_symp'] > 0, 0, df_interp['health_status'])
+        # df_interp['health_status'] = np.where(df_interp['sum_symp'] == 0, 1, df_interp['health_status'])
+        health_status = np.where(df_interp['sum_symp'].data[:] > 0, 0,
+                                 np.where(df_interp['sum_symp'].data[:]== 0,1, np.nan))
+        df_interp.create_numeric('health_status', 'int8').data.write(health_status)
+
+        # df_interp['max_symp'] = df_interp.groupby('patient_id')['sum_symp'].transform('max')
+        # df_interp = df_interp.groupby('patient_id').apply(lambda group: interpolate_healthy(group))
+        health = np.where(dfg['sum_symp'] == 0, 1, np.where(dfg['sum_symp'] > 0, 0, np.nan))
+        df_interp.create_numeric('health', 'int8').data.write(health)
+        spans = df_interp['patient_id'].get_spans()
+        max_symp = np.zeros(len(df_interp['patient_id'].data), 'int8')
+        health_interp = np.zeros(len(df_interp['patient_id'].data), 'int8')
+        health_back = np.zeros(len(df_interp['patient_id'].data), 'int8')
+        count_healthy = np.zeros(len(df_interp['patient_id'].data), 'int8')
+        count_nothealthy = np.zeros(len(df_interp['patient_id'].data), 'int8')
+        count_nans_or_health = np.zeros(len(df_interp['patient_id'].data), 'int8')
+        count_nans = np.zeros(len(df_interp['patient_id'].data), 'int8')
+        for i in range(len(spans)-1):
+            max_symp[spans[i]:spans[i+1]] = np.max(df_interp['sum_symp'].data[spans[i]:spans[i+1]])
+            #interpolate_healthy functions
+            health_interp[spans[i]:spans[i+1]] = pd.Series(df_interp['health'].data[spans[i]:spans[i+1]]).ffill()
+            health_back[spans[i]:spans[i+1]] = pd.Series(df_interp['health'].data[spans[i]:spans[i+1]]).bfill()
+            nan_healthy = np.where(health_interp[spans[i]:spans[i+1]] == 1, np.nan, health_interp[spans[i]:spans[i+1]])
+            nan_healthy = pd.Series(nan_healthy)
+            count_healthy[spans[i]:spans[i+1]] = nan_healthy.isnull().astype(int).groupby( nan_healthy.notnull().astype(int).cumsum()).cumsum()
+
+            nan_uh = np.where(df_interp['health_interp'].data[spans[i]:spans[i+1]] == 0, np.nan, 1 - df_interp['health_interp'].data[spans[i]:spans[i+1]])
+            nan_uh = pd.Series(nan_uh)
+            count_nothealthy[spans[i]:spans[i+1]] = nan_uh.isnull().astype(int).groupby( nan_uh.notnull().astype(int).cumsum()).cumsum()
+
+            nan_or_health = np.where(df_interp['health'].data[spans[i]:spans[i+1]] == 0, 1, np.nan)
+            nan_or_health = pd.Series(nan_or_health)
+            count_nans_or_health[spans[i]:spans[i+1]] = nan_or_health.isnull().astype(int).groupby(nan_or_health.notnull().astype(int).cumsum()).cumsum()
+
+            health_status = pd.Series(df_interp['health_status'].data[spans[i]:spans[i+1]])
+            count_nans[spans[i]:spans[i+1]] = health_status.isnull().astype(int).groupby(health_status.notnull().astype(int).cumsum()).cumsum()
+
+        df_interp.create_numeric('count_healthy', 'int8').data.write(hecount_healthyalth)
+        df_interp.create_numeric('count_nothealthy', 'int8').data.write(count_nothealthy)
+        df_interp.create_numeric('count_nans_or_health', 'int8').data.write(count_nans_or_health)
+        df_interp.create_numeric('count_nans', 'int8').data.write(count_nans)
 
     for f in days:
-        if 'first_stuh_hg%d' % f not in df_interp.columns or force == True:
+        if 'first_stuh_hg%d' % f not in df_interp.keys() or force == True:
             print('treating ', f)
-            df_interp = df_interp.loc[~df_interp.index.duplicated(keep='first')]
+            #todo confirm remove dup index
+            #df_interp = df_interp.loc[~df_interp.index.duplicated(keep='first')]
 
-            list_dfg = []
-            list_pat = list(set(df_interp['patient_id']))
-            list_ind = []
-            for (i, p) in enumerate(list_pat):
-                dfg = df_interp[df_interp['patient_id'] == p]
-                dfg_new = define_gh_noimp(dfg, gap_healthy=f)
-                list_ind.append(dfg_new.index)
-                list_dfg.append(dfg_new.loc[~dfg_new.index.duplicated(keep='first')])
-                print(i, " treated out of ", len(list_pat))
+            # list_dfg = []
+            # list_pat = list(set(df_interp['patient_id']))
+            # #list_ind = []
+            # for (i, p) in enumerate(list_pat):
+            #     dfg = df_interp[df_interp['patient_id'] == p]
+            #     dfg_new = define_gh_noimp(dfg, gap_healthy=f)
+            #     #list_ind.append(dfg_new.index)
+            #     list_dfg.append(dfg_new.loc[~dfg_new.index.duplicated(keep='first')])
+            #     print(i, " treated out of ", len(list_pat))
+            #
+            # df_interp = pd.concat(list_dfg)
+            #
+            # # df_interp = df_interp.groupby('patient_id').apply(lambda group: define_gh_noimp(group, gap_healthy=f))
+            # df_interp.to_csv(saved_name) # todo here csv file is only saved for the last day
+            spans = df_interp['patient_id'].get_spans()
+            newdf = TEMPH5.create_dataframe('newdf')
+            for f in df_interp.keys():
+                df_interp[f].create_like(newdf, f)
+            for f in ['first_stuh_hg%d' % gap_healthy, 'latest_first_%d' % gap_healthy, 'last_stuh_hg%d' % gap_healthy,
+                      'first_stuh_nhg%d' % gap_healthy, 'last_stuh_nhg%d' % gap_healthy, 'date_first_stuh_hg%d' % gap_healthy, 'date_latest_first_%d' % gap_healthy]:
+                newdf.create_numeric(f, 'int8')
+            for i in range(len(spans)-1):  # alter the define_gh_noimp function to exetera is too complicated, try using pandas
+                tempd = {}
+                for f in df_interp.keys():
+                    tempd[f] = df_interp[f].data[spans[i]:spans[i+1]]
+                tempdf = pd.DataFrame(tempd, index=tempd['interval_days'])
+                resultdb = define_gh_noimp(tempdf, gap_healthy=f)
+                for f in resultdb.columns:
+                    newdf[f].data.write(resultdb[f].values)
 
-            df_interp = pd.concat(list_dfg)
-
-            # df_interp = df_interp.groupby('patient_id').apply(lambda group: define_gh_noimp(group, gap_healthy=f))
+            df_interp = newdf
             df_interp.to_csv(saved_name)
 
     return df_interp
@@ -429,46 +489,89 @@ def determine_meeting_criteria(df_interp, days=[7]):
 
     struct_time = datetime.strptime("20 Jul 20", "%d %b %y").date()
     df_interp['delay'] = pd.to_datetime(df_interp['date_update'], infer_datetime_format=True).dt.date - struct_time
-    df_interp['dropped'] = np.where(df_interp['delay'] <= timemin, 1, 0)
-    df_interp['last_entry_sum'] = df_interp.groupby('patient_id')['sum_symp'].transform('last')
+    delay = (df_interp['date_update'] - datetime.strptime("20 Jul 20", "%d %b %y").timestamp())/86400
+    #df_interp['dropped'] = np.where(df_interp['delay'] <= timemin, 1, 0)
+    # todo confirm last_entry_sum should be there already
+    # df_interp['last_entry_sum'] = df_interp.groupby('patient_id')['sum_symp'].transform('last')
+    # last_entry_sum = np.zeros(len(df_interp['patient_id'].data), 'int16')
+    # spans = df_interp['patient_id'].get_spans()
+    # for i in range(len(spans)-1):
+    #     last_entry_sum[spans[i]:spans[i+1]] = df_interp['date_update'].data[spans[i+1]-1]
 
-    df_interp['count_uh_nans'] = df_interp['count_nans'] * (1 - df_interp['health_interp']) * (
-            1 - df_interp['health_back'])
-    df_interp['count_utoh_nans'] = df_interp['count_nans'] * (1 - df_interp['health_interp']) * df_interp['health_back']
-    df_interp['count_htouh_nans'] = df_interp['count_nans'] * (df_interp['health_interp']) * (
-            1 - df_interp['health_back'])
-    df_interp['max_uh_nans'] = df_interp.groupby('patient_id')['count_uh_nans'].transform('max')
+
+    # df_interp['count_uh_nans'] = df_interp['count_nans'] * (1 - df_interp['health_interp']) * (
+    #         1 - df_interp['health_back'])
+    count_uh_nans = df_interp['count_nans'].data[:] * (1 - df_interp['health_interp'].data[:]) * (
+            1 - df_interp['health_back'].data[:])
+    df_interp.create_numeric('count_uh_nans', 'int16').data.write(count_uh_nans)
+    #df_interp['count_utoh_nans'] = df_interp['count_nans'] * (1 - df_interp['health_interp']) * df_interp['health_back']
+    count_utoh_nans = df_interp['count_nans'].data[:] * (1 - df_interp['health_interp'].data[:]) * df_interp['health_back'].data[:]
+    df_interp.create_numeric('count_utoh_nans', 'int16').data.write(count_utoh_nans)
+    # df_interp['count_htouh_nans'] = df_interp['count_nans'] * (df_interp['health_interp']) * (
+    #         1 - df_interp['health_back'])
+    count_htouh_nans = df_interp['count_nans'].data[:] * (df_interp['health_interp'].data[:]) * (
+            1 - df_interp['health_back'].data[:])
+    df_interp.create_numeric('count_htouh_nans', 'int16').data.write(count_htouh_nans)
+    #df_interp['max_uh_nans'] = df_interp.groupby('patient_id')['count_uh_nans'].transform('max')
+    max_uh_nans = np.zeros(len(df_interp['patient_id']), 'int16')
+    spans = df_interp['patient_id'].get_spans()
+    for i in range(len(spans)-1):
+        max_uh_nans[spans[i]:spans[i+1]] = np.max(df_interp['count_uh_nans'].data[spans[i]:spans[i+1]])
+    df_interp.create_numeric('max_uh_nans', 'int16').data.write(max_uh_nans)
 
     for f in days:
-        if 'postcrit_aok%d' % f not in df_interp.columns:
+        if 'postcrit_aok%d' % f not in df_interp.keys():
             print('Need to treat ', f)
-            timemin = timedelta(days=-f)
-            df_interp['meeting_post_criteria%d' % f] = np.where(
-                np.logical_and(df_interp['interval_days'] > df_interp['last_stuh_hg%d' % f],
-                               df_interp['count_healthy'] == f), 1, 0)
-            df_interp['postcrit_ok%d' % f] = df_interp.groupby('patient_id')['meeting_post_criteria%d' % f].transform(
-                'max')
-            df_interp['postcrit_aok%d' % f] = df_interp['postcrit_ok%d' % f]
-            df_interp['postcrit_aok%d' % f] = np.where(
-                np.logical_and(df_interp['delay'] < timemin, df_interp['last_entry_sum'] == 0), 1,
-                df_interp['postcrit_aok%d' % f])
+            #timemin = timedelta(days=-f)
+            meeting_post_criteria = np.where(
+                np.logical_and(df_interp['interval_days'].data[:] > df_interp['last_stuh_hg%d' % f].data[:],
+                               df_interp['count_healthy'].data[:] == f), 1, 0)
+            df_interp.create_numeric('meeting_post_criteria%d' % f, 'int16').data.write(meeting_post_criteria)
+
+            # df_interp['postcrit_ok%d' % f] = df_interp.groupby('patient_id')['meeting_post_criteria%d' % f].transform(
+            #     'max')
+            postcrit_ok = np.zeros(len(df_interp['patient_id'].data), 'int16')
+            spans = df_interp['patient_id'].get_spans()
+            for i in range(len(spans)-1):
+                postcrit_ok[spans[i]:spans[i+1]] = np.max(df_interp['meeting_post_criteria%d' % f].data[spans[i]:spans[i+1]])
+            df_interp.create_numeric('postcrit_ok%d' % f, 'int16').data.write(postcrit_ok)
+
+            df.copy(df_interp['postcrit_ok%d' % f], df_interp, 'postcrit_aok%d' % f)
+
+            df_interp['postcrit_aok%d' % f].data.write( np.where(
+                np.logical_and(delay < 86400*int(f), df_interp['last_entry_sum'].data[:] == 0), 1,
+                df_interp['postcrit_aok%d' % f]))
             # df_interp.to_csv('/home/csudre/MountedSpace/Covid/InterpolatedPosSHSymp.csv')
 
     for f in list_symptoms:
-        df_interp['check_' + f] = np.where(df_interp['health_interp'] == 0, df_interp[f], 0)
-        df_interp['sumcheck_' + f] = df_interp.groupby('patient_id')['check_' + f].transform('sum')
+        check_ = np.where(df_interp['health_interp'].data[:] == 0, df_interp[f].data[:], 0)
+        df_interp.create_numeric('check_'+f, 'int16').data.write(check_)
+
+        #df_interp['sumcheck_' + f] = df_interp.groupby('patient_id')['check_' + f].transform('sum')
+        sumcheck_ = np.zeros(len(df_interp['patient_id'].data), 'int16')
+        spans = df_interp['patient_id'].get_spans()
+        for i in range(len(spans)-1):
+            sumcheck_[spans[i]:spans[i+1]] = np.sum(check_[spans[i]:spans[i+1]])
+        df_interp.create_numeric('sumcheck_' + f, 'int16').data.write(sumcheck_)
 
     for d in days:
-        df_interp['sick%d' % d] = np.where(
-            np.logical_and(df_interp['interval_days'] >= df_interp['first_stuh_hg%d' % d],
-                           df_interp['interval_days'] <= df_interp['last_stuh_hg%d' % d]), 1, 0)
+        sickd = np.where(
+            np.logical_and(df_interp['interval_days'].data[:] >= df_interp['first_stuh_hg%d' % d].data[:],
+                           df_interp['interval_days'].data[:] <= df_interp['last_stuh_hg%d' % d].data[:]), 1, 0)
+        df_interp.create_numeric('sick%d' % d, 'int16').data.write(sickd)
         for f in list_symptoms:
-            df_interp['sick%d_' % d + f] = np.where(df_interp['sick%d' % d] == 1, df_interp['check_' + f], 0)
-            df_interp['day%d_' % d + f] = np.where(
-                np.logical_and(df_interp['sick%d' % d] == 1, df_interp['check_' + f] > 0.5), df_interp['interval_days'],
-                np.nan)
-            df_interp['start%d_' % d + f] = df_interp.groupby('patient_id')['day%d_' % d + f].transform('min')
-            df_interp['sumsick%d_' % d + f] = df_interp.groupby('patient_id')['sick%d_' % d + f].transform('sum')
+            #df_interp['sick%d_' % d + f] = np.where(df_interp['sick%d' % d] == 1, df_interp['check_' + f], 0)
+            sickdf = np.where(df_interp['sick%d' % d].data[:] == 1, df_interp['check_' + f].data[:], 0)
+            df_interp.create_numeric('sick%d_' % d + f, 'int16').data.write(sickdf)
+
+            # df_interp['day%d_' % d + f] = np.where(
+            #     np.logical_and(df_interp['sick%d' % d] == 1, df_interp['check_' + f] > 0.5), df_interp['interval_days'],
+            #     np.nan)
+            
+
+            #df_interp['start%d_' % d + f] = df_interp.groupby('patient_id')['day%d_' % d + f].transform('min')
+            #df_interp['sumsick%d_' % d + f] = df_interp.groupby('patient_id')['sick%d_' % d + f].transform('sum')
+
         for f in ['fatigue', 'shortness_of_breath']:
             df_interp['sick%d_' % d + f + '_mild'] = np.where(df_interp['sick%d_' % d + f] >= 1, 1,
                                                               df_interp['sick%d_' % d + f])
@@ -584,7 +687,10 @@ def main(argv):
     if 'duration' in args.process:
         print('processing duration')
         if 'date_effective_test' not in df_proc.keys():
-            df.merge(df_proc, df_test)
+            tempdf = TEMPH5.create_dataframe('df_proc')
+            df.merge(df_proc, df_test, dest=tempdf, left_on='patient_id', right_on='patient_id' )
+            #todo drop duplicates
+            df_proc = tempdf
 
         # if 'date_effective_test' not in df_proc.columns:
         #     df_test = pd.read_csv(args.test_file)
