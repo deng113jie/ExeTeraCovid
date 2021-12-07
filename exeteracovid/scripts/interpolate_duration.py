@@ -567,38 +567,67 @@ def determine_meeting_criteria(df_interp, days=[7]):
             # df_interp['day%d_' % d + f] = np.where(
             #     np.logical_and(df_interp['sick%d' % d] == 1, df_interp['check_' + f] > 0.5), df_interp['interval_days'],
             #     np.nan)
-            
+            daydf = np.where(np.logical_and(df_interp['sick%d' % d].data[:] == 1, df_interp['check_' + f].data[:] > 0.5), df_interp['interval_days'].data[:], np.nan)
+            df_interp.create_numeric('day%d_' % d + f, 'int16').data.write(daydf)
 
             #df_interp['start%d_' % d + f] = df_interp.groupby('patient_id')['day%d_' % d + f].transform('min')
             #df_interp['sumsick%d_' % d + f] = df_interp.groupby('patient_id')['sick%d_' % d + f].transform('sum')
+            spans = df_interp['patient_id'].get_spans()
+            startdf = np.zeros(len(df_interp['patient_id'].data), 'int16')
+            sumsickdf = np.zeros(len(df_interp['patient_id'].data), 'int16')
+            for i in range(len(spans) - 1):
+                startdf[spans[i]:spans[i + 1]] = np.min(daydf[spans[i]:spans[i + 1]])
+                sumsickdf[spans[i]:spans[i + 1]] = np.sum(sickdf[spans[i]:spans[i + 1]])
+            df_interp.create_numeric('start%d_' % d + f, 'int16').data.write(startdf)
+            df_interp.create_numeric('sumsick%d_' % d + f, 'int16').data.write(sumsickdf)
+
 
         for f in ['fatigue', 'shortness_of_breath']:
-            df_interp['sick%d_' % d + f + '_mild'] = np.where(df_interp['sick%d_' % d + f] >= 1, 1,
-                                                              df_interp['sick%d_' % d + f])
-            df_interp['day%d_' % d + f + '_mild'] = np.where(
-                np.logical_and(df_interp['sick%d_' % d + f + '_mild'] > 1, df_interp['check_' + f] > 0.5),
-                df_interp['interval_days'],
-                np.nan)
-            df_interp['start%d_' % d + f + '_mild'] = df_interp.groupby('patient_id')[
-                'day%d_' % d + f + '_mild'].transform(
-                'min')
-            df_interp['sumsick%d_' % d + f + '_mild'] = df_interp.groupby('patient_id')[
-                'sick%d_' % d + f + '_mild'].transform('sum')
-            df_interp['end%d_' % d + f + '_mild'] = df_interp.groupby('patient_id')[
-                'day%d_' % d + f + '_mild'].transform(
-                'max')
+            # df_interp['sick%d_' % d + f + '_mild'] = np.where(df_interp['sick%d_' % d + f] >= 1, 1,
+            #                                                   df_interp['sick%d_' % d + f])
+            sickmild = np.where(df_interp['sick%d_' % d + f].data[:] >= 1, 1, df_interp['sick%d_' % d + f].data[:])
+            df_interp.create_numeric('sick%d_' % d + f + '_mild', 'int16').data.write(sickmild)
 
-            df_interp['sick%d_' % d + f + '_severe'] = df_interp['sick%d_' % d + f] / 3
-            df_interp['day%d_' % d + f + '_severe'] = np.where(
-                np.logical_and(df_interp['sick%d_' % d + f + '_severe'] >= 0.5, df_interp['check_' + f] > 1.5),
-                df_interp['interval_days'],
-                np.nan)
-            df_interp['start%d_' % d + f + '_severe'] = df_interp.groupby('patient_id')[
-                'day%d_' % d + f + '_severe'].transform('min')
-            df_interp['sumsick%d_' % d + f + '_severe'] = df_interp.groupby('patient_id')[
-                'sick%d_' % d + f + '_severe'].transform('sum')
-            df_interp['end%d_' % d + f + '_severe'] = df_interp.groupby('patient_id')[
-                'day%d_' % d + f + '_severe'].transform('max')
+            # df_interp['day%d_' % d + f + '_mild'] = np.where( np.logical_and(df_interp['sick%d_' % d + f + '_mild'] > 1,
+            #                                                                  df_interp['check_' + f] > 0.5), df_interp['interval_days'], np.nan)
+            daymild = np.where( np.logical_and(df_interp['sick%d_' % d + f + '_mild'].data[:] > 1,
+                                                                             df_interp['check_' + f].data[:] > 0.5), df_interp['interval_days'].data[:], np.nan)
+            df_interp.create_numeric('day%d_' % d + f + '_mild', 'int16').data.write(daymild)
+            # df_interp['start%d_' % d + f + '_mild'] = df_interp.groupby('patient_id')[
+            #     'day%d_' % d + f + '_mild'].transform(
+            #     'min')
+            # df_interp['sumsick%d_' % d + f + '_mild'] = df_interp.groupby('patient_id')[
+            #     'sick%d_' % d + f + '_mild'].transform('sum')
+            # df_interp['end%d_' % d + f + '_mild'] = df_interp.groupby('patient_id')[
+            #     'day%d_' % d + f + '_mild'].transform(
+            #     'max')
+
+            #df_interp['sick%d_' % d + f + '_severe'] = df_interp['sick%d_' % d + f] / 3
+            sicksever = df_interp['sick%d_' % d + f].data[:] / 3
+            df_interp.create_numeric('sick%d_' % d + f + '_severe', 'int16').data.write(sicksever)
+
+            # df_interp['day%d_' % d + f + '_severe'] = np.where( np.logical_and(df_interp['sick%d_' % d + f + '_severe'] >= 0.5,
+            #                                                                    df_interp['check_' + f] > 1.5), df_interp['interval_days'], np.nan)
+            daysever =  np.where( np.logical_and(df_interp['sick%d_' % d + f + '_severe'].data[:] >= 0.5,
+                                                 df_interp['check_' + f].data[:] > 1.5), df_interp['interval_days'].data[:], np.nan)
+            df_interp.create_numeric('day%d_' % d + f + '_severe', 'int16').data.write(daysever)
+
+            # df_interp['start%d_' % d + f + '_severe'] = df_interp.groupby('patient_id')[
+            #     'day%d_' % d + f + '_severe'].transform('min')
+            # df_interp['sumsick%d_' % d + f + '_severe'] = df_interp.groupby('patient_id')[
+            #     'sick%d_' % d + f + '_severe'].transform('sum')
+            # df_interp['end%d_' % d + f + '_severe'] = df_interp.groupby('patient_id')[
+            #     'day%d_' % d + f + '_severe'].transform('max')
+            startmild = np.zero(len(df_interp['patient_id']), 'int16')
+            endmild = np.zero(len(df_interp['patient_id']), 'int16')
+            summild = np.zero(len(df_interp['patient_id']), 'int16')
+            startsever = np.zero(len(df_interp['patient_id']), 'int16')
+            endsever = np.zero(len(df_interp['patient_id']), 'int16')
+            sumsever = np.zero(len(df_interp['patient_id']), 'int16')
+            for i in range(len(spans) - 1):
+                pass
+                #startmild[spans[i]:spans[i+1]] =
+
 
     return df_interp
 
