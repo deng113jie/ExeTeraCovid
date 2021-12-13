@@ -1,10 +1,12 @@
 import math
-
-import pandas as pd
-import numpy as np
 from datetime import datetime, timedelta
 import argparse
 import sys
+
+from numba import njit
+import pandas as pd
+import numpy as np
+
 
 from exetera.core.session import Session
 import exetera.core.dataframe as df
@@ -37,6 +39,23 @@ def creating_nanvalues(df_train):
     df_train['sum_symp'].data.write(sum_symp)
     return df_train
 
+@njit
+def single_interpolate(old_index, old_data, new_index, limit_area='inner'):
+    # expand the index
+    result = np.full(len(new_index), np.nan, 'float')
+    for i in range(len(old_index)):
+        idx = np.argwhere(new_index==old_index[i])
+        result[idx[0][0]] = old_data[i]
+    # interpolate
+    if limit_area=='inner':
+        for i in range(0, len(old_index)-1):
+            if old_index[i+1] - old_index[i] > 1:  # has nan in between
+                coeff = float(old_data[i+1] - old_data[i])/float(old_index[i+1] - old_index[i])
+                for j in range(old_index[i]+1, old_index[i+1]):
+                    idx = np.argwhere(new_index == j)[0][0]
+                    result[idx] = old_data[i] + (j-old_index[i])*coeff
+    return result
+
 
 def interpolate_date(df_train, list_symptoms=list_symptoms, col_day='interval_days'):
     # df_train['sob2'] = np.round(df_train['shortness_of_breath'] * 1.0 / 3, 0)
@@ -55,7 +74,7 @@ def interpolate_date(df_train, list_symptoms=list_symptoms, col_day='interval_da
     #     [col_day, "patient_id"])
     #df_test_comb = df_test_comb.sort_values(['patient_id', 'interval_days'])
 
-    full_idx = np.arange(df_test_comb['interval_days'].data[:].min(), df_test_comb['interval_days'].data[:].max())
+    full_idx = np.arange(df_test_comb['interval_days'].data[:].min(), df_test_comb['interval_days'].data[:].max()+1)
 
     # for f in list_symptoms + ['fatigue', 'shortness_of_breath']:
     #     df_test_comb[f] = df_test_comb[f].fillna(0)
@@ -65,91 +84,36 @@ def interpolate_date(df_train, list_symptoms=list_symptoms, col_day='interval_da
     expanded_df = TEMPH5.create_dataframe('expanded_df')
     df_test_comb['patient_id'].create_like(expanded_df, 'patient_id')
     df_test_comb['interval_days'].create_like(expanded_df, 'interval_days')
+    df_test_comb['created_at'].create_like(expanded_df, 'created_at')
     for f in list_symptoms:
         expanded_df.create_numeric(f,'float')
 
     spans = df_test_comb['patient_id'].get_spans()
     for i in range(len(spans)-1):
+        if (i%1000==0): print(datetime.now(), i, ' no. of interpolation processed.')
         #write patient_id, idx
         pid = df_test_comb['patient_id'].data[spans[i]]
         expanded_df['patient_id'].data.write([pid for _ in range(len(full_idx))])
         expanded_df['interval_days'].data.write(full_idx)
         idx = df_test_comb['interval_days'].data[spans[i]:spans[i+1]]
+        # todo perform filter on gap of assessments
+        # todo use np (memory array) to reduce io and speed up
         for f in list_symptoms:
             data = df_test_comb[f].data[spans[i]:spans[i+1]]
-            pdseries = pd.Series(data, index=idx)
-            pdseries = pdseries.reindex(full_idx)
-            pdseries = pdseries.interpolate(method='linear', limit_area='inside')
-            expanded_df[f].data.write(pdseries.values)
+            # pdseries = pd.Series(data, index=idx)
+            # pdseries = pdseries.reindex(full_idx)
+            # pdseries = pdseries.interpolate(method='linear', limit_area='inside')
+            # expanded_df[f].data.write(pdseries.values)
+            result = single_interpolate(idx, data, full_idx)
+            expanded_df[f].data.write(result)
+        created_interp = single_interpolate(idx, df_test_comb['created_at'].data[spans[i]:spans[i+1]], full_idx)
+        expanded_df['created_at'].data.write(created_interp)
     #drop na, rename axis, drop column, reset_index
     filter = np.isnan(expanded_df['fatigue'].data[:])
     for f in list_symptoms:
         filter &= np.isnan(expanded_df[f].data[:])
     expanded_df.apply_filter(filter)
     return expanded_df
-
-
-    # def f_inter(x):
-    #     #         full_idx = np.arange(x['interval_days'].min(), x['interval_days'].max())
-    #     x = x.reindex(full_idx)
-    #     for f in list_symptoms:
-    #         x[f] = x[f].replace('False', 0)
-    #         x[f] = x[f].replace('True', 1)
-    #         x[f] = x[f].astype(float)
-    #         x[f] = x[f].interpolate(method='linear', limit_area='inside')
-    #     x = x.dropna(subset=list_symptoms + ['date_update'], how='all')
-    #     return (x)
-    #
-    # df_interp = df_test_comb_ind.groupby('patient_id').apply(f_inter).rename_axis(('patient_id', 'interval_days')).drop(
-    #     'patient_id', 1).reset_index()
-    # return df_interp
-
-
-
-
-
-def check_succession_healthy(dfg, limit):
-    dfg['sum_nans'] = np.where(dfg['sum_symp'] == 0, np.nan, dfg['sum_symp'])
-    dfg['count_healthy'] = dfg.sum_nans.isnull().astype(int).groupby(
-        dfg.sum_nans.notnull().astype(int).cumsum()).cumsum()
-    dfg['not_healthy'] = dfg.sum_nans.notnull().astype(int).groupby(dfg.sum_nans.isnull().astype(int).cumsum()).cumsum()
-    dfg['interval_interp'] = np.arange(0, dfg.shape[0])
-    dfg = dfg.reset_index(drop=True)
-    dfg['interp_sum'] = dfg['sum_symp'].interpolate('linear')
-    max_cnans = dfg['count_healthy'].max()
-    idx_cnans = dfg['count_healthy'].idxmax()
-    #     dfg['interval_interp'] = dfg['interval_days'].interpolate(method='linear',limit_area='inside')
-    dfg['ln'] = dfg['count_healthy'].ge(limit)
-    dfg['days_max'] = 0
-    value_max_e = dfg.sort_values(['sum_symp', 'interval_interp'], ascending=False).head(1)['interval_interp']
-    value_max_b = dfg.sort_values(['sum_symp'], ascending=False).head(1)['interval_interp']
-
-    dfg['days_max_b'] = np.asarray(value_max_b)[0]
-    dfg['days_max_e'] = np.asarray(value_max_e)[0]
-    print(value_max_e, value_max_b)
-    dfg = dfg.sort_values('interval_interp').reset_index(drop=True)
-    # print(dfg['days_max'].min())
-    dfg['lne'] = dfg['ln'].astype(float) * dfg['interval_interp'].gt(dfg['days_max_e']).astype(float) * dfg[
-        'interp_sum'].lt(2).astype(float)
-    dfg['lnb'] = dfg['ln'].astype(float) * dfg['interval_interp'].lt(dfg['days_max_b']).astype(float)
-    dfg_temp = dfg
-    if dfg['lnb'].max() > 0:
-        print("begin issue")
-        dfg_lnb_last = dfg_temp[dfg_temp['lnb'] > 0].last_valid_index()
-        print(np.asarray(dfg_temp.loc[dfg_lnb_last]['interp_sum']))
-        dfg_temp = dfg_temp.loc[dfg_lnb_last:]
-        dfg_temp = dfg_temp.reset_index(drop=True)
-    if dfg['lne'].max() > 0:
-        print("end issue")
-        dfg_lne_first = dfg_temp[dfg_temp['lne'] > 0].first_valid_index()
-        #         print(dfg_temp.iloc[dfg_temp['lne'].idxmax()]['interval_interp'])
-        dfg_temp = dfg_temp[
-            dfg_temp['interval_interp'] < dfg_temp.iloc[dfg_temp['lne'].idxmax()]['interval_interp'] - limit + 2]
-    #         print(np.asarray(max_cnans), np.asarray(idx_cnans))
-    #         dfg_temp = dfg.iloc[:np.asarray(idx_cnans)-np.asarray(max_cnans)]
-    print(dfg_temp.shape, dfg.shape, dfg_temp[
-        ['interval_interp', 'days_max_e', 'days_max_b', 'sum_symp', 'interp_sum', 'duration', 'ln', 'lnb', 'lne']])
-    return dfg
 
 
 def define_gh_noimp(dfg, gap_healthy=7):
@@ -294,64 +258,11 @@ def define_gh_noimp(dfg, gap_healthy=7):
     return dfg
 
 
-def define_gh_imp(dfg, gap_healthy=7):
-    id_max = dfg[dfg['imp'] > 0]['interval_days'].min()
-    id_max2 = dfg[dfg['imp'] > 0]['interval_days'].max()
-
-    dfg_before_imp = dfg[dfg['interval_days'] <= id_max]
-    dfg_after_imp = dfg[dfg['interval_days'] >= id_max2]
-    max_count_test_nh = dfg_before_imp['count_nothealthy'].max()
-    #max_count_bh = dfg_before_imp['count_healthy'].max()
-    #max_count_ah = dfg_after_imp['count_healthy'].max()
-
-    if dfg_before_imp.shape[0] > 0:
-        if max_count_test_nh > 0:
-            print('treating test', dfg_before_imp.shape[0], max_count_test_nh)
-            last_count_ah = dfg_after_imp['count_healthy'].tail(1).to_numpy()[0]
-            #min_count_bh = dfg_before_imp['count_healthy'].min()
-            dfg['first_stuh_hg%d' % gap_healthy] = dfg_before_imp[dfg_before_imp['count_nothealthy'] == 1][
-                'interval_days'].min()
-            dfg['last_stuh_hg%d' % gap_healthy] = dfg_after_imp[dfg_after_imp['count_healthy'] == last_count_ah][
-                                                      'interval_days'].max() - last_count_ah
-
-            dfg['first_stuh_nhg%d' % gap_healthy] = dfg_before_imp[dfg_before_imp['count_nothealthy'] == 1][
-                'interval_days'].min()
-            dfg['last_stuh_nhg%d' % gap_healthy] = dfg_after_imp[dfg_after_imp['count_healthy'] == last_count_ah][
-                                                       'interval_days'].max() - last_count_ah
-
-            dbm_hg = dfg_before_imp[dfg_before_imp['count_healthy'] > gap_healthy]
-            dam_hg = dfg_after_imp[dfg_after_imp['count_healthy'] > gap_healthy]
-
-            last_healthy_gap = dbm_hg['interval_days'].max()
-            first_healthy_gap = dam_hg['interval_days'].min() - gap_healthy
-            #     print(last_healthy_gap)
-            if dbm_hg.shape[0] > 0:
-                dfg['first_stuh_hg%d' % gap_healthy] = last_healthy_gap + 1
-            if dam_hg.shape[0] > 0:
-                dfg['last_stuh_hg%d' % gap_healthy] = first_healthy_gap
-
-            dbm_hg = dfg_before_imp[dfg_before_imp['count_nans_or_health'] > gap_healthy]
-            dam_hg = dfg_after_imp[dfg_after_imp['count_nans_or_health'] > gap_healthy]
-            last_healthy_gap = dbm_hg['interval_days'].max()
-            first_healthy_gap = dam_hg['interval_days'].min() - gap_healthy
-            #     print(last_healthy_gap)
-            if dbm_hg.shape[0] > 0:
-                dfg['first_stuh_nhg%d' % gap_healthy] = last_healthy_gap + 1
-            if dam_hg.shape[0] > 0:
-                dfg['last_stuh_nhg%d' % gap_healthy] = first_healthy_gap
-    return dfg
-
-
-# def date_range(dfg, c='date_update'):
-#     dfg['interval'] = dfg[c] - dfg[c].min()
-#     return dfg
-
-
 def creating_interpolation(df_init):
     print('Applying date range')
     # df_init['first_entry_sum'] = df_init.groupby('patient_id')['sum_symp'].transform('first')
     # df_init['last_entry_sum'] = df_init.groupby('patient_id')['sum_symp'].transform('last')
-    df_init['date_update'] = df_init['created_at']
+    df.copy( df_init['created_at'], df_init, 'date_update')
     first_entry_sum = np.zeros(len(df_init['patient_id']), 'int16')
     last_entry_sum = np.zeros(len(df_init['patient_id']), 'int16')
     interval_days = np.zeros(len(df_init['patient_id']), 'int16')
@@ -369,8 +280,8 @@ def creating_interpolation(df_init):
 
     print('Performing interpolation')
     df_interp = interpolate_date(df_init)
-    #df_interp['created_interp'] = df_interp['created_at'].interpolate('linear') todo confirm
-    df_interp['created_interp'] = df_interp['created_at']
+    #df_interp['created_interp'] = df_interp['created_at'].interpolate('linear') todo confirm created_at should be local per patient
+
     return df_interp
 
 
@@ -403,6 +314,12 @@ def creating_duration_healthybased(df_interp, saved_name, days=[7], hi=False, fo
         # df_interp['health_status'] = np.nan
         # df_interp['health_status'] = np.where(df_interp['sum_symp'] > 0, 0, df_interp['health_status'])
         # df_interp['health_status'] = np.where(df_interp['sum_symp'] == 0, 1, df_interp['health_status'])
+        #todo confirm re-cal sum_symp rename to sum_symp_interpo
+        sum_symp = np.zeros(len(df_train['patient_id'].data), 'int16')
+        for k in list_symptoms:
+            sum_symp+=df_interp[k].data[:]
+        df_interp.create_numeric('df_interp', 'int16').data.write(sum_symp)
+
         health_status = np.where(df_interp['sum_symp'].data[:] > 0, 0,
                                  np.where(df_interp['sum_symp'].data[:]== 0,1, np.nan))
         df_interp.create_numeric('health_status', 'int8').data.write(health_status)
@@ -486,6 +403,86 @@ def creating_duration_healthybased(df_interp, saved_name, days=[7], hi=False, fo
 
     return df_interp
 
+def treat_interp(df_interp):
+    df_interp['count_values'] = df_interp.groupby('patient_id')['interval_days'].transform('count')
+    df_interp['length_log'] = df_interp.groupby('patient_id')['interval_days'].transform('max')
+    for d in [7,14]:
+        df_interp['duration%d'%d] = df_interp['last_stuh_hg%d'%d] - df_interp['first_stuh_hg%d'%d] + 1
+        df_interp['last_status%d'%d] = np.where(df_interp['last_stuh_hg%d'%d]==df_interp['interval_days'],df_interp['health_interp'],np.nan)
+        df_interp['last_status%d'%d] = df_interp.groupby('patient_id')['last_status%d'%d].transform('max')
+        df_interp['duration%dnew'%d] = np.where(df_interp['last_status%d'%d]==1,df_interp['duration%d'%d]-1,df_interp['duration%d'%d])
+    for s in list_symptoms_red:
+        if 'day7_'+s in df_interp.columns:
+            df_interp['end7_'+s] = df_interp.groupby('patient_id')['day7_'+s].transform('max')
+    df_interp['date_firstuh7'] = np.where(df_interp['interval_days']==df_interp['first_stuh_hg7'],df_interp['created_at'],np.nan)
+    df_interp['date_firstuh7'] = df_interp.groupby('patient_id')['date_firstuh7'].transform('min')
+
+    df_interp['date_firstuh14'] = np.where(df_interp['interval_days']==df_interp['first_stuh_hg14'],df_interp['created_at'],np.nan)
+    df_interp['date_firstuh14'] = df_interp.groupby('patient_id')['date_firstuh14'].transform('min')
+
+    df_interp['date_lastuh7'] = np.where(df_interp['interval_days']>=df_interp['last_stuh_hg7'],df_interp['created_at'],np.nan)
+    df_interp['date_lastuh7'] = df_interp.groupby('patient_id')['date_lastuh7'].transform('min')
+    df_interp['date_lastuh7'] = np.where(df_interp['last_status7']==1,df_interp['date_lastuh7']-86400,df_interp['date_lastuh7'])
+    df_interp['date_lastuh14'] = np.where(df_interp['interval_days']>=df_interp['last_stuh_hg14'],df_interp['created_at'],np.nan)
+    df_interp['date_lastuh14'] = df_interp.groupby('patient_id')['date_lastuh14'].transform('min')
+    df_interp['date_lastuh14'] = np.where(df_interp['last_status14']==1,df_interp['date_lastuh14']-86400,df_interp['date_lastuh14'])
+    df_interp['date_sick'] = np.where(df_interp['health_interp']==0, df_interp['created_at'],np.nan)
+    df_interp['first_sick'] = df_interp.groupby('patient_id')['date_sick'].transform('min')
+    df_interp['last_sick'] = df_interp.groupby('patient_id')['date_sick'].transform('max')
+    df_interp['last_log'] = df_interp.groupby('patient_id')['created_at'].transform('max')
+    df_interp['first_log'] = df_interp.groupby('patient_id')['created_at'].transform('min')
+    df_interp['h_extent'] = np.where(df_interp['created_at']>=df_interp['first_sick'],df_interp['health_interp'],0)
+    df_interp['h_extent'] = np.where(df_interp['created_at']<=df_interp['last_sick'],df_interp['h_extent'],0)
+    df_interp['count_h_extent'] = df_interp.groupby('patient_id')['h_extent'].transform('sum')
+    df_interp['last_afs7'] = np.where(np.logical_and(df_interp['created_at']>df_interp['first_sick'], df_interp['count_healthy']>=7),df_interp['created_at']-86400*df_interp['count_healthy'],np.nan)
+    df_interp['last_afs14'] = np.where(np.logical_and(df_interp['created_at']>df_interp['first_sick'], df_interp['count_healthy']>=14),df_interp['created_at']-86400*df_interp['count_healthy'],np.nan)
+    df_interp['last_afs7'] = np.where(df_interp['created_at']>=df_interp['last_sick'],df_interp['last_sick'],df_interp['last_afs7'])
+    df_interp['last_afs14'] = np.where(df_interp['created_at']>=df_interp['last_sick'],df_interp['last_sick'],df_interp['last_afs14'])
+    df_interp['prop_h'] = df_interp['count_healthy'].replace(0,np.nan)
+    df_interp['prop_h'] = df_interp.groupby('patient_id')['prop_h'].ffill()
+    df_interp['first_s'] = np.where(df_interp['count_nothealthy']==1,df_interp['created_at'],np.nan)
+    df_interp['first_s7'] = np.where(np.logical_and(df_interp['first_s']>df_interp['first_sick'], df_interp['prop_h']<7),np.nan, df_interp['first_s'])
+    df_interp['first_s14'] = np.where(np.logical_and(df_interp['first_s']>df_interp['first_sick'], df_interp['prop_h']<14),np.nan, df_interp['first_s'])
+
+    df_interp['last_afs7_f'] = df_interp.groupby('patient_id')['last_afs7'].bfill()
+    df_interp['last_afs14_f'] = df_interp.groupby('patient_id')['last_afs14'].bfill()
+    df_interp['first_s7_f'] = df_interp.groupby('patient_id')['first_s7'].ffill()
+    df_interp['first_s14_f'] = df_interp.groupby('patient_id')['first_s14'].ffill()
+    df_interp['dur7_art'] = (df_interp['last_afs7_f'] - df_interp['first_s7_f'])/86400 +1
+    df_interp['dur14_art'] = (df_interp['last_afs14_f'] - df_interp['first_s14_f'])/86400 +1
+
+    df_interp['dur7_artm'] = df_interp.groupby('patient_id')['dur7_art'].transform('max')
+    df_interp['dur14_artm'] = df_interp.groupby('patient_id')['dur14_art'].transform('max')
+    df_interp['first_sicki'] = np.where(df_interp['created_at']==df_interp['first_sick'],df_interp['interval_days'],np.nan)
+    df_interp['last_sicki'] = np.where(df_interp['created_at']==df_interp['last_sick'],df_interp['interval_days'],np.nan)
+    df_interp['first_sicki'] = df_interp.groupby('patient_id')['first_sicki'].transform('min')
+    df_interp['last_sicki'] = df_interp.groupby('patient_id')['last_sicki'].transform('min')
+    print('creating nan values')
+    df_interp['max_nans'] = df_interp.groupby('patient_id')['count_nans'].transform('max')
+    df_interp['max_nans_fl7'] = np.where(np.logical_and(df_interp['interval_days']>=df_interp['first_stuh_hg7'],
+                                                        df_interp['interval_days']<=df_interp['last_stuh_hg7']), df_interp['count_nans'],0)
+
+    df_interp['max_nans_fl14'] = np.where(np.logical_and(df_interp['interval_days']>=df_interp['first_stuh_hg14'],
+                                                        df_interp['interval_days']<=df_interp['last_stuh_hg14']), df_interp['count_nans'],0)
+
+    df_interp['max_nans_fl14'] = df_interp.groupby('patient_id')['max_nans_fl14'].transform('max')
+    df_interp['max_nans_fl7'] = df_interp.groupby('patient_id')['max_nans_fl7'].transform('max')
+    df_interp['max_symp'] = df_interp.groupby('patient_id')['sum_symp'].transform('max')
+    df_interp['max_countuh']  = df_interp.groupby('patient_id')['count_nothealthy'].transform('max')
+    df_interp['day_test'] = np.where(np.logical_and(df_interp['created_interp']<=df_interp['date_effective_test']+86400,
+                                               df_interp['created_interp']<=df_interp['date_effective_test']-86400), df_interp['interval_days'],np.nan)
+    df_interp['before_test'] = np.where(df_interp['created_interp']<=df_interp['date_effective_test'],1,0)
+    df_interp['count_uhbef'] = df_interp['count_nothealthy'] * df_interp['before_test']
+    df_interp['count_nanbef'] = df_interp['count_nans'] * df_interp['before_test']
+    df_interp['max_countnanbef'] =  df_interp.groupby('patient_id')['count_nanbef'].transform('max')
+    df_interp['max_countuhbef'] = df_interp.groupby('patient_id')['count_uhbef'].transform('max')
+    df_interp['created_aroundtest'] = np.where(np.logical_and(df_interp['created_at']<=df_interp['date_effective_test']+8*86400,
+                                                         df_interp['created_at']>=df_interp['date_effective_test']-14*86400),1,0)
+    df_interp['sum_symp_at'] = df_interp['sum_symp'] * df_interp['created_aroundtest']
+    df_interp['max_symp_at'] = df_interp.groupby('patient_id')['sum_symp_at'].transform('max')
+    df_interp['numb_at'] = df_interp.groupby('patient_id')['created_aroundtest'].transform('sum')
+    return df_interp
+
 
 def determine_meeting_criteria(df_interp, days=[7]):
     from datetime import datetime, timedelta
@@ -497,7 +494,7 @@ def determine_meeting_criteria(df_interp, days=[7]):
     df_interp['delay'] = pd.to_datetime(df_interp['date_update'], infer_datetime_format=True).dt.date - struct_time
     delay = (df_interp['date_update'] - datetime.strptime("20 Jul 20", "%d %b %y").timestamp())/86400
     #df_interp['dropped'] = np.where(df_interp['delay'] <= timemin, 1, 0)
-    # todo confirm last_entry_sum should be there already
+    # todo confirm last_entry_sum should be there already - refresh after interpolation
     # df_interp['last_entry_sum'] = df_interp.groupby('patient_id')['sum_symp'].transform('last')
     # last_entry_sum = np.zeros(len(df_interp['patient_id'].data), 'int16')
     # spans = df_interp['patient_id'].get_spans()
@@ -751,28 +748,48 @@ def main(argv):
         print('Checking criteria')
         df_proc = determine_meeting_criteria(df_proc, days=args.days)
         df_proc.to_csv('criteria.csv')
-    #if 'hosp' in args.process:  # not updated
-        # print('Checking hosp')
-        # # df_interp = pd.read_csv('/home/csudre/MountedSpace/Covid/InterpolatedPosSHSymp.csv')
-        # # print(df_interp.shape)
-        #
-        # for d in args.days:
-        #     df_proc['hosp_valid%d' % d] = (df_proc['interval_days'] > df_proc['first_stuh_hg%d' % d]) * (
-        #             df_proc['location'] > 1)
-        #     df_proc['hosp_check%d' % d] = df_proc.groupby('patient_id')['hosp_valid%d' % d].transform('max')
-        #     df_proc['to_adjust%d' % d] = np.where(
-        #         (df_proc['count_utoh_nans'] == d) * (df_proc['interval_days'] > df_proc['first_stuh_hg%d' % d])
-        #         * (df_proc['interval_days'] < df_proc['last_stuh_hg%d' % d]) * (df_proc['hosp_check%d' % d] == 0) == 1,
-        #         1, 0)
-        #     df_proc['max_adjust%d' % d] = df_proc.groupby('patient_id')['to_adjust%d' % d].transform('max')
-        #     df_proc['max_adjust%d' % d] = df_proc.groupby('patient_id')['to_adjust%d' % d].transform('max')
-        #     df_proc['day_adjust%d' % d] = np.where(df_proc['to_adjust%d' % d] == 1, df_proc['interval_days'], np.nan)
-        #     df_proc['maxday_adjust%d' % d] = df_proc.groupby('patient_id')['day_adjust%d' % d].transform('max')
-        #     df_proc['last_stuh_hg%d_adj' % d] = np.where(df_proc['max_adjust%d' % d] == 1,
-        #                                                  df_proc['maxday_adjust%d' % d] - d,
-        #                                                  df_proc['last_stuh_hg%d' % d])
-        #
-        # df_proc.to_csv('hospitalisation_csv')
+
+    #calculate duration
+    treat_interp(df_proc)  # from notebook
+
+    if 'hosp' in args.process:  # not updated
+        print('Checking hosp')
+        # df_interp = pd.read_csv('/home/csudre/MountedSpace/Covid/InterpolatedPosSHSymp.csv')
+        # print(df_interp.shape)
+
+        for d in args.days:
+            hosp_valid = (df_proc['interval_days'].data[:] > df_proc['first_stuh_hg%d' % d].data[:]) * ( df_proc['location'].data[:] > 1)
+            df_proc.create_numeric('hosp_valid%d' % d, 'int16').data.write(hosp_valid)
+
+            hosp_check = np.zeros(len(df_proc['patient_id'].data), 'int16')
+            spans = df_proc['patient_id'].get_spans()
+            for i in range(len(spans)-1):
+                hosp_check[spans[i]:spans[i+1]] = np.max(hosp_valid[spans[i]:spans[i+1]])
+            df_proc.create_numeric('hosp_check%d' % d, 'int16').data.write(hosp_check)
+
+            to_adjust = np.where(
+                (df_proc['count_utoh_nans'].data[:] == d) * (df_proc['interval_days'].data[:] > df_proc['first_stuh_hg%d' % d].data[:])
+                * (df_proc['interval_days'].data[:] < df_proc['last_stuh_hg%d' % d].data[:]) * (df_proc['hosp_check%d' % d].data[:] == 0) == 1,
+                1, 0)
+            df_proc.create_numeric('to_adjust%d' % d, 'int16').data.write(to_adjust)
+
+            max_adjust = np.zeros(len(df_proc['patient_id'].data), 'int16')
+            for i in range(len(spans) - 1):
+                max_adjust[spans[i]:spans[i+1]] = np.max(to_adjust[spans[i]:spans[i+1]])
+            df_proc.create_numeric('max_adjust%d' % d, 'int16').data.write(max_adjust)
+
+            day_adjust = np.where(df_proc['to_adjust%d' % d] == 1, df_proc['interval_days'], np.nan)
+            df_proc.create_numeric('day_adjust%d' % d, 'int16').data.write(day_adjust)
+
+            maxday_adjust = np.zeros(len(df_proc['patient_id'].data), 'int16')
+            for i in range(len(spans) - 1):
+                maxday_adjust[spans[i]:spans[i+1]] = np.max(day_adjust[spans[i]:spans[i+1]])
+            df_proc.create_numeric('maxday_adjust%d' % d, 'int16').data.write(maxday_adjust)
+
+            last_stuh_hg = np.where(max_adjust == 1, maxday_adjust - d, df_proc['last_stuh_hg%d' % d].data[:])
+            df_proc.create_numeric('last_stuh_hg%d_adj' % d, 'int16').data.write(last_stuh_hg)
+
+        df_proc.to_csv('hospitalisation_csv')
     # else:  # not updated
     #     df_proc = creating_nanvalues(df_proc)
     #
@@ -805,6 +822,7 @@ def main(argv):
     #                                                      df_proc['maxday_adjust%d' % d] - d,
     #                                                      df_proc['last_stuh_hg%d' % d])
     #     df_proc.to_csv(args.output)
+
 
 
 if __name__ == '__main__':
