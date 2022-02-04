@@ -54,8 +54,8 @@ def save_df_to_csv(df, csv_name, fields, chunk=200000):  # chunk=100k ~ 20M/s
 @njit
 def reduce_symptom(onesymp, sum, spans):
     for i in range(len(spans) - 1):
-        onesymp[spans[i]] = 1 if np.any(onesymp[spans[i]:spans[i + 1]] > 0) else 0
-    sum += onesymp
+        onesymp[spans[i]] = np.max(onesymp[spans[i]:spans[i + 1]]) if np.any(onesymp[spans[i]:spans[i + 1]] > 0) else 0
+    sum += np.where(onesymp>0, 1, 0)
     return onesymp, sum
 
 
@@ -114,7 +114,7 @@ def transform_method(data, spans, method):
             result[spans[i]:spans[i + 1]] = np.nanmin(data[spans[i]:spans[i + 1]])
     elif method == 'max':
         for i in range(len(spans) - 1):
-            result[spans[i]:spans[i + 1]] = np.nanmin(data[spans[i]:spans[i + 1]])
+            result[spans[i]:spans[i + 1]] = np.nanmax(data[spans[i]:spans[i + 1]])
     elif method == 'sum':
         for i in range(len(spans) - 1):
             result[spans[i]:spans[i + 1]] = np.nansum(data[spans[i]:spans[i + 1]])
@@ -219,7 +219,7 @@ def creating_interpolation(df_init):
     df_init.create_numeric('interval_days', 'int32').data.write(interval_days)
 
 
-    #df_init = creating_nanvalues_and_aggregate(df_init)
+    df_init = creating_nanvalues_and_aggregate(df_init)
 
     print('Performing interpolation')
     df_interp = interpolate_date(df_init)
@@ -860,6 +860,35 @@ def treat_interp_short(df_interp):
     return df_interp
 
 
+def cal_severity(df_proc):
+    """
+    Calculate the severity of patient after 7days/28days of test. The severity is the median of sym_sump values.
+    :param df_proc:
+    :return:
+    """
+    df_proc.sort_values(by=['patient_id', 'date_effective_test'])
+    sorted_by_fields_data = np.asarray([df_proc[k].data[:] for k in ['patient_id', 'date_effective_test']])
+    spans = ops._get_spans_for_multi_fields(sorted_by_fields_data)
+    severity7 = np.zeros(len(df_proc['patient_id']), 'int16')
+    severity28 = np.zeros(len(df_proc['patient_id']), 'int16')
+    for i in range(len(spans)-1):
+        #get asmts 7days after
+        filter = np.logical_and(df_proc['date_effective_test'].data[spans[i]:spans[i+1]]<= df_proc['created_at'].data[spans[i]:spans[i+1]] ,
+                 df_proc['created_at'].data[spans[i]:spans[i+1]] <= (df_proc['date_effective_test'].data[spans[i]:spans[i+1]] + 86400*7))
+        filter &= ~np.isnan(df_proc['sum_symp'].data[spans[i]:spans[i+1]])
+        value7 = np.median(df_proc['sum_symp'].data[spans[i]:spans[i+1]][filter])
+        severity7[spans[i]:spans[i+1]] = value7 if value7>0 else 0
+
+        filter = np.logical_and(df_proc['date_effective_test'].data[spans[i]:spans[i + 1]] <= df_proc['created_at'].data[spans[i]:spans[i + 1]]
+                 , df_proc['created_at'].data[spans[i]:spans[i + 1]] <= (df_proc['date_effective_test'].data[ spans[i]:spans[i + 1]] + 86400 * 28))
+        filter &= ~np.isnan(df_proc['sum_symp'].data[spans[i]:spans[i + 1]])
+        value28 = np.median(df_proc['sum_symp'].data[spans[i]:spans[i + 1]][filter])
+        severity28[spans[i]:spans[i + 1]] = value28 if value28>0 else 0
+
+    df_proc.create_numeric('severity7', 'int16').data.write(severity7)
+    df_proc.create_numeric('severity28', 'int16').data.write(severity28)
+    return df_proc
+
 
 def output_three_files(df_proc):
     '''
@@ -939,7 +968,7 @@ def main(argv):
 
     if 'nans' in args.process:
         print('preparing data')
-        df_proc = creating_nanvalues(df_proc)
+        #df_proc = creating_nanvalues(df_proc)
     if 'interpolate' in args.process:
         print('performing interpolation')
         df_proc = creating_interpolation(df_proc)
@@ -973,6 +1002,8 @@ def main(argv):
 
     # todo group duration by each patient @Liane/Michela
     # todo output data filtering some column @Liane/Michela
+    #calculate severity
+    df_proc = cal_severity(df_proc)
 
 
     #calculate duration
