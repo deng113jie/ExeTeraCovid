@@ -316,7 +316,7 @@ def output_kerstin_csv(src_filename, dst_filename, date_to, date_from, imd_file_
         #241 vaccined
         print(datetime.now(), 'Working on vaccinated...')
         vaccinated = dst_ds.create_dataframe('vaccinated')
-        #del patients_with_tests['valid_r']
+        del patients_with_tests['valid_r']
         df.merge(patients_with_tests, d_vaccds_uniq, dest=vaccinated, left_on='patient_id', right_on='patient_id')
         tested_date_week = [time.mktime((datetime.fromtimestamp(dt) - timedelta(datetime.fromtimestamp(dt).weekday()+1)).date().timetuple()) for dt in vaccinated['date_taken_specific'].data[:]]
         vaccinated.create_timestamp('tested_date_week').data.write(tested_date_week)
